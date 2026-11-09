@@ -16,11 +16,13 @@ def init(root, **kwargs):
     return initialize(root, kwargs.pop("profile", "code-review"), "codex", kwargs.pop("models", None), kwargs.pop("catalog", None), **kwargs)
 
 
-def test_comment_preserving_merge_and_existing_agents(project, fake_codex):
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"], ids=["LF", "CRLF"])
+def test_comment_preserving_merge_and_existing_agents(project, fake_codex, newline):
     (project / ".codex").mkdir()
     original = '# personal comment\napproval_policy = "on-request"\n[agents.personal]\ndescription="my role"\n'
     (project / ".codex/config.toml").write_text(original)
-    (project / "AGENTS.md").write_text("# Personal instructions\nKeep this.\n")
+    instructions = b"# Personal instructions" + newline + b"Keep this." + newline
+    (project / "AGENTS.md").write_bytes(instructions)
     init(project)
     changes, before = prepare(project)
     result = changes[".codex/config.toml"].decode()
@@ -29,7 +31,7 @@ def test_comment_preserving_merge_and_existing_agents(project, fake_codex):
     assert doc["approval_policy"] == "on-request"
     assert doc["agents"]["personal"]["description"] == "my role"
     assert doc["agents"]["atr_explorer"]["config_file"] == "agents/atr_explorer.toml"
-    assert changes["AGENTS.md"].startswith(b"# Personal instructions\nKeep this.\n")
+    assert changes["AGENTS.md"].startswith(instructions)
     for path, data in changes.items():
         if path.startswith(".codex/agents/"):
             assert tomllib.loads(data.decode())["sandbox_mode"] == "read-only"

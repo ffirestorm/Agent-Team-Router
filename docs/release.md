@@ -4,7 +4,7 @@
 
 | 项目 | 当前证据 |
 |---|---|
-| 核心规则与配置安全 | macOS / Python 3.12：85 passed，1 个 Windows 专属用例跳过 |
+| 核心规则与配置安全 | macOS / Python 3.12：86 passed，1 个 Windows 专属用例跳过；显式覆盖 LF/CRLF 保留 |
 | 真实 Codex 原生字段检查 | 0.167.0-alpha.3.2 本地通过 |
 | 实际配置层加载 | 未信任项目禁用，临时信任后三个角色及并发覆写正确加载 |
 | 实际 Skill 发现 | app-server skills/list 返回目标项目 Skill，enabled=true |
