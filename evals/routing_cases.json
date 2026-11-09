@@ -1,0 +1,6 @@
+[
+  {"task": "Fix a typo in a comment", "profile": "economical", "expect_single_agent": true, "expect_review": false},
+  {"task": "修复支付认证的并发 bug", "profile": "economical", "expect_single_agent": false, "expect_review": true},
+  {"task": "分析 RAG 调用链", "profile": "code-review", "expect_single_agent": false, "expect_review": false},
+  {"task": "Design a distributed architecture", "profile": "quality", "expect_single_agent": false, "expect_review": true}
+]

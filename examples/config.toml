@@ -1,0 +1,34 @@
+# Copy overrides into a project's .atr/config.toml after atr init.
+version = 1
+platform = "codex"
+profile = "code-review"
+
+[discovery]
+source = "user-supplied (account access unverified)"
+
+# These names are examples. Confirm your own model access before applying.
+[models]
+fast = "local-fast"
+expert = "local-expert"
+
+[catalog.local-fast]
+efforts = ["low", "medium"]
+[catalog.local-expert]
+efforts = ["medium", "high"]
+
+[profiles.code-review]
+concurrency = 1
+
+[profiles.code-review.roles.explorer]
+model = "local-fast"
+effort = "low"
+
+[profiles.code-review.roles.logic_tracer]
+tier = "expert"
+effort = "high"
+instructions = "Trace RAG retrieval, reranking and generation; cite source paths. Do not edit files."
+
+[profiles.code-review.roles.reviewer]
+enabled = true
+model = "local-expert"
+effort = "high"

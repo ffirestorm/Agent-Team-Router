@@ -1,0 +1,254 @@
+
+$ atr init --project /private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9
+{
+  "project": "/private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9",
+  "config": ".atr/config.toml",
+  "profile": "balanced",
+  "codex": "codex-cli 0.167.0-alpha.3.2",
+  "models": {
+    "fast": "gpt-6-luna",
+    "balanced": "gpt-6.1-terra",
+    "reasoning": "gpt-6.1-sol",
+    "expert": "gpt-6-astra"
+  },
+  "availability": "codex-bundled (account access unverified)",
+  "note": "未执行模型调用；按账号实际可用模型编辑映射。"
+}
+
+$ atr profile use code-review --project /private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9
+{
+  "profile": "code-review",
+  "note": "仅更新 ATR 设置；运行 atr apply --dry-run 查看原生配置差异"
+}
+
+$ atr plan 分析项目中的 RAG 调用链 --project /private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9
+{
+  "task": "分析项目中的 RAG 调用链",
+  "category": "review",
+  "complexity": "normal",
+  "risk": "normal",
+  "profile": "code-review",
+  "concurrency": 2,
+  "stronger_review": false,
+  "assignments": [
+    {
+      "role": "explorer",
+      "model": "gpt-6-luna",
+      "effort": "low",
+      "read_only": true,
+      "instructions": "Explore source and cite file paths. Do not edit files.",
+      "reason": "code-review / review / normal复杂度 / normal风险；目标 fast 档位",
+      "alternatives": [
+        "gpt-6.1-terra",
+        "gpt-6.1-sol",
+        "gpt-6-astra"
+      ]
+    },
+    {
+      "role": "logic_tracer",
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "read_only": true,
+      "instructions": "Trace call chains and explain invariants with source evidence. Do not edit files.",
+      "reason": "code-review / review / normal复杂度 / normal风险；目标 reasoning 档位",
+      "alternatives": [
+        "gpt-6-luna",
+        "gpt-6.1-terra",
+        "gpt-6-astra"
+      ]
+    },
+    {
+      "role": "reviewer",
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "read_only": true,
+      "instructions": "Review correctness, tests and risks with concrete evidence. Do not edit files.",
+      "reason": "code-review / review / normal复杂度 / normal风险；目标 reasoning 档位",
+      "alternatives": [
+        "gpt-6-luna",
+        "gpt-6.1-terra",
+        "gpt-6-astra"
+      ]
+    }
+  ],
+  "notes": [
+    "仅生成建议，不执行任务。模型目录验证不代表账号调用权限或额度验证。"
+  ]
+}
+
+$ atr apply --dry-run --project /private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9
+--- a/.codex/agents/atr_explorer.toml
++++ b/.codex/agents/atr_explorer.toml
+@@ -0,0 +1,4 @@
++model = "gpt-6-luna"
++model_reasoning_effort = "low"
++sandbox_mode = "read-only"
++developer_instructions = "Explore source and cite file paths. Do not edit files."
+--- a/.codex/agents/atr_logic_tracer.toml
++++ b/.codex/agents/atr_logic_tracer.toml
+@@ -0,0 +1,4 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "high"
++sandbox_mode = "read-only"
++developer_instructions = "Trace call chains and explain invariants with source evidence. Do not edit files."
+--- a/.codex/agents/atr_reviewer.toml
++++ b/.codex/agents/atr_reviewer.toml
+@@ -0,0 +1,4 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "high"
++sandbox_mode = "read-only"
++developer_instructions = "Review correctness, tests and risks with concrete evidence. Do not edit files."
+--- a/.codex/config.toml
++++ b/.codex/config.toml
+@@ -0,0 +1,17 @@
++[agents]
++max_concurrent_threads_per_session = 2
++
++[agents.atr_explorer]
++description = "Explore source and cite file paths. Do not edit files."
++config_file = "agents/atr_explorer.toml"
++
++[agents.atr_logic_tracer]
++description = "Trace call chains and explain invariants with source evidence. Do not edit files."
++config_file = "agents/atr_logic_tracer.toml"
++
++[agents.atr_reviewer]
++description = "Review correctness, tests and risks with concrete evidence. Do not edit files."
++config_file = "agents/atr_reviewer.toml"
++
++[features]
++multi_agent = true
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,2 +1,14 @@
+ # Existing project instructions
+ Keep this text.
++
++<!-- ATR:BEGIN -->
++## Agent Team Router
++
++Static team configuration; ATR does not execute tasks or intercept model calls.
++Profile: code-review. Maximum concurrent subagents: 2.
++Only delegate when useful. Honor task scope, sandbox restrictions and host instructions.
++This is a READ-ONLY team. Do not modify project files, including from the main agent.
++- `atr_explorer`: `gpt-6-luna` / `low`; read-only. Explore source and cite file paths. Do not edit files.
++- `atr_logic_tracer`: `gpt-6.1-sol` / `high`; read-only. Trace call chains and explain invariants with source evidence. Do not edit files.
++- `atr_reviewer`: `gpt-6.1-sol` / `high`; read-only. Review correctness, tests and risks with concrete evidence. Do not edit files.
++<!-- ATR:END -->
+
+Dry-run：静态验证通过；未修改项目文件；未调用模型。
+
+$ atr apply --project /private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9
+--- a/.codex/agents/atr_explorer.toml
++++ b/.codex/agents/atr_explorer.toml
+@@ -0,0 +1,4 @@
++model = "gpt-6-luna"
++model_reasoning_effort = "low"
++sandbox_mode = "read-only"
++developer_instructions = "Explore source and cite file paths. Do not edit files."
+--- a/.codex/agents/atr_logic_tracer.toml
++++ b/.codex/agents/atr_logic_tracer.toml
+@@ -0,0 +1,4 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "high"
++sandbox_mode = "read-only"
++developer_instructions = "Trace call chains and explain invariants with source evidence. Do not edit files."
+--- a/.codex/agents/atr_reviewer.toml
++++ b/.codex/agents/atr_reviewer.toml
+@@ -0,0 +1,4 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "high"
++sandbox_mode = "read-only"
++developer_instructions = "Review correctness, tests and risks with concrete evidence. Do not edit files."
+--- a/.codex/config.toml
++++ b/.codex/config.toml
+@@ -0,0 +1,17 @@
++[agents]
++max_concurrent_threads_per_session = 2
++
++[agents.atr_explorer]
++description = "Explore source and cite file paths. Do not edit files."
++config_file = "agents/atr_explorer.toml"
++
++[agents.atr_logic_tracer]
++description = "Trace call chains and explain invariants with source evidence. Do not edit files."
++config_file = "agents/atr_logic_tracer.toml"
++
++[agents.atr_reviewer]
++description = "Review correctness, tests and risks with concrete evidence. Do not edit files."
++config_file = "agents/atr_reviewer.toml"
++
++[features]
++multi_agent = true
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,2 +1,14 @@
+ # Existing project instructions
+ Keep this text.
++
++<!-- ATR:BEGIN -->
++## Agent Team Router
++
++Static team configuration; ATR does not execute tasks or intercept model calls.
++Profile: code-review. Maximum concurrent subagents: 2.
++Only delegate when useful. Honor task scope, sandbox restrictions and host instructions.
++This is a READ-ONLY team. Do not modify project files, including from the main agent.
++- `atr_explorer`: `gpt-6-luna` / `low`; read-only. Explore source and cite file paths. Do not edit files.
++- `atr_logic_tracer`: `gpt-6.1-sol` / `high`; read-only. Trace call chains and explain invariants with source evidence. Do not edit files.
++- `atr_reviewer`: `gpt-6.1-sol` / `high`; read-only. Review correctness, tests and risks with concrete evidence. Do not edit files.
++<!-- ATR:END -->
+
+已应用；备份：.atr/backups/f06440ed9ced4856aaec57dda36b5756.json
+
+$ atr doctor --project /private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9
+{
+  "ok": true,
+  "project": "/private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9",
+  "checks": [
+    {
+      "check": "codex",
+      "ok": true,
+      "detail": "codex-cli 0.167.0-alpha.3.2"
+    },
+    {
+      "check": "native_fields",
+      "ok": true,
+      "detail": "isolated Codex strict-config validation passed"
+    },
+    {
+      "check": "applied",
+      "ok": true,
+      "pending": []
+    }
+  ],
+  "existing_agents": {
+    "global": [],
+    "project": [
+      "atr_explorer",
+      "atr_logic_tracer",
+      "atr_reviewer"
+    ]
+  },
+  "model_invocation": "not performed",
+  "limitations": [
+    "模型账号权限和真实调用未验证",
+    "隔离检查不包含全局或管理员配置约束",
+    "项目 .codex/config.toml 需 Codex 信任该项目后才会加载"
+  ]
+}
+
+$ atr apply --project /private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9
+无配置差异
+配置已一致，无需修改（未创建重复备份）
+
+$ atr skill install --project /private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9
+已应用；备份：.atr/backups/6979161bdd6f4a1b9781f01998aa72fc.json
+Skill 已安装到项目 .agents/skills；在 Codex 新会话中使用 $agent-team-router。
+
+$ atr rollback --project /private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9
+已回滚事务 6979161bdd6f4a1b9781f01998aa72fc；保留备份以供核查
+
+$ atr rollback --project /private/var/folders/tv/xtb46xlx0clc7dxmzmjwcxj00000gn/T/atr-demo-1trz0ph9
+已回滚事务 f06440ed9ced4856aaec57dda36b5756；保留备份以供核查
+
+PASS: native validation, idempotence, Skill installation, and byte-preserving rollback; zero model calls.

@@ -1,0 +1,6 @@
+{
+  "models": [
+    {"id": "local-fast", "efforts": ["low", "medium"]},
+    {"id": "local-expert", "efforts": ["medium", "high"]}
+  ]
+}

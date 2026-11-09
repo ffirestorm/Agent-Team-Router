@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "codex": "codex-cli 0.167.0-alpha.3.2",
+  "untrusted_project_layer_disabled": true,
+  "trusted_roles_loaded": [
+    "atr_explorer",
+    "atr_logic_tracer",
+    "atr_reviewer"
+  ],
+  "role_paths_resolved": true,
+  "concurrency_override_loaded": 1,
+  "project_skill_enabled": true,
+  "rpc_methods": [
+    "initialize",
+    "config/read",
+    "initialize",
+    "config/read",
+    "skills/list"
+  ],
+  "inference_requested": false,
+  "limitations": "Metadata discovery only; no child Agent was spawned and no model entitlement was tested."
+}

@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-team-router"
+version = "0.1.0"
+description = "Explainable agent planning and safe native Codex team configuration"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = ["tomlkit>=0.13,<1"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Repository = "https://github.com/ffirestorm/Agent-Team-Router"
+Issues = "https://github.com/ffirestorm/Agent-Team-Router/issues"
+Documentation = "https://github.com/ffirestorm/Agent-Team-Router#readme"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "build>=1"]
+
+[project.scripts]
+atr = "atr.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/atr"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
