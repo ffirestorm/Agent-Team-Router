@@ -3,6 +3,7 @@ import subprocess
 import sys
 
 from atr.cli import main
+from atr import __version__
 from atr.storage import read
 
 
@@ -48,4 +49,4 @@ def test_doctor_uninitialized_and_cli_errors(project, fake_codex, capsys):
 
 def test_python_module_entrypoint():
     result = subprocess.run([sys.executable, "-m", "atr", "--version"], capture_output=True, text=True)
-    assert result.returncode == 0 and result.stdout.strip() == "0.1.0"
+    assert result.returncode == 0 and result.stdout.strip() == __version__

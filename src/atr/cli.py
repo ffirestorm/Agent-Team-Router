@@ -12,7 +12,7 @@ from atr.storage import apply, diff, read, recover, rollback, state
 
 
 def parser():
-    root = argparse.ArgumentParser(prog="atr", description="Explainable agent planning and safe Codex configuration; no task execution.")
+    root = argparse.ArgumentParser(prog="atr", description="Safe Codex configuration, explainable routing and bounded single-task execution.")
     root.add_argument("--version", action="version", version=__version__)
     root.add_argument("--project", default=".", help="target project (default: current directory)")
     commands = root.add_subparsers(dest="command", required=True)
@@ -34,6 +34,7 @@ def parser():
     use.add_argument("--project", default=argparse.SUPPRESS)
     plan = command("plan", help="explain task allocation without executing it")
     plan.add_argument("task")
+    plan.add_argument("--complexity", choices=["simple", "medium", "complex"])
     app = command("apply", help="validate, diff and safely apply native configuration")
     app.add_argument("--dry-run", action="store_true")
     command("doctor")
@@ -41,6 +42,22 @@ def parser():
     command("recover", help="restore a prepared transaction after interruption")
     skill = command("skill")
     skill.add_argument("action", choices=["install"])
+    execution = command("run", help="preview or explicitly execute a task contract in an isolated snapshot")
+    execution.add_argument("task_file")
+    mode = execution.add_mutually_exclusive_group()
+    mode.add_argument("--execute", action="store_true")
+    mode.add_argument("--dry-run", action="store_true")
+    execution.add_argument("--model")
+    execution.add_argument("--effort")
+    execution.add_argument("--complexity", choices=["simple", "medium", "complex"])
+    execution.add_argument("--allow-escalation", action="store_true")
+    runs = command("runs", help="inspect, cancel or recover local execution records")
+    actions = runs.add_subparsers(dest="action", required=True)
+    for action in ("list", "report", "show", "cancel", "recover"):
+        entry = actions.add_parser(action)
+        entry.add_argument("--project", default=argparse.SUPPRESS)
+        if action in ("show", "cancel", "recover"):
+            entry.add_argument("id")
     return root
 
 
@@ -61,8 +78,12 @@ def run(args):
     elif args.command == "plan":
         if not args.task.strip():
             raise ATRException("任务描述不能为空")
-        _, profile, rules, models = load(root)
-        emit(plan_team(args.task, profile, models, rules).to_dict())
+        from atr.task_policy import select_initial
+        doc, profile, rules, models = load(root)
+        override = {"simple": "low", "medium": "normal", "complex": "high"}.get(args.complexity)
+        result = plan_team(args.task, profile, models, rules, complexity_override=override).to_dict()
+        result["initial_execution"] = select_initial(args.task, models, doc.get("routing", {}), args.complexity)
+        emit(result)
     elif args.command == "apply":
         changes, before = prepare(root)
         preview = diff(root, changes)
@@ -87,6 +108,29 @@ def run(args):
             raise ATRException("已有同名 Skill；不会覆盖用户文件")
         print(apply(root, {name: data}, {name: existing}))
         print("Skill 已安装到项目 .agents/skills；在 Codex 新会话中使用 $agent-team-router。")
+    elif args.command == "run":
+        from pathlib import Path
+        from atr.runtime.runner import execute, preview
+        plan = preview(root, Path(args.task_file).resolve(), args.model, args.effort,
+                       args.complexity, args.allow_escalation)
+        if not args.execute:
+            emit(plan)
+        else:
+            record = execute(root, plan)
+            emit(record)
+            return 0 if record["status"] == "succeeded" else 1
+    elif args.command == "runs":
+        from atr.runtime.records import all_records, recover_run, report, request_cancel, show
+        if args.action == "list":
+            emit([{key: run[key] for key in ("id", "task_id", "status", "created_at")} for run in all_records(root)])
+        elif args.action == "report":
+            emit(report(root))
+        elif args.action == "show":
+            emit(show(root, args.id))
+        elif args.action == "cancel":
+            emit(request_cancel(root, args.id))
+        elif args.action == "recover":
+            emit(recover_run(root, args.id))
     return 0
 
 

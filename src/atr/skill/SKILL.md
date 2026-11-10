@@ -1,11 +1,11 @@
 ---
 name: agent-team-router
-description: Configure project-local Codex agent teams, choose a resource-conscious or read-only profile, explain model allocation for a task, and diagnose or roll back ATR configuration using the installed atr CLI.
+description: Configure project-local Codex teams, explain task difficulty and model allocation, diagnose or roll back configuration, and run explicitly requested bounded engineering tasks with ATR.
 ---
 
-Use the real `atr` CLI for configuration and planning. ATR V0.1 creates static native
-Codex role definitions; it does not execute tasks, intercept calls, or enforce model
-selection at runtime. Model tiers are heuristics; do not promise a Plus quota saving.
+Use the real `atr` CLI. Check `atr --version`: V0.1 only generates configuration;
+the V0.2 development CLI also supports bounded single-task execution. ATR does not
+intercept arbitrary host calls. Model tiers are heuristics; do not promise quota savings.
 
 Resolve the user's target project. Commands accept `--project /absolute/project`.
 If ATR is unavailable, explain installation with `python -m pip install agent-team-router`
@@ -23,6 +23,14 @@ only if that package has actually been published; for a source checkout use
   are within the user's requested scope. Report actual CLI output and failures.
 - Install this skill locally with `atr skill install`. Use `atr rollback` to undo
   the latest application or skill installation. `atr recover` handles interrupted writes.
+- For explicitly requested engineering execution in V0.2, prepare a task JSON with
+  description, allowed paths, baseline argv and independent JSON verifier argv.
+  Inspect `atr run TASK.json --dry-run`. Only `--execute` invokes models. Add
+  `--allow-escalation` only when automatic upgrades are in the requested scope.
+  A request for configuration or model advice alone is not an execution request.
+- Inspect `atr runs show ID` and `atr runs report`. Candidate changes stay in an
+  isolated snapshot with a patch; review them before integrating. `runs cancel ID`
+  requests cancellation; `runs recover ID` never automatically reexecutes a model.
 
 Only report success after the CLI succeeds. Do not edit global Codex config or auth.
 Do not bypass conflicts, strict validation, or modified-file rollback protection.

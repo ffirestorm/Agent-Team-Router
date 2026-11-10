@@ -66,7 +66,7 @@ class Verifier(Protocol):
 
 
 class Executor(Protocol):
-    """Future runtime boundary; V0.1 deliberately has no implementation."""
+    """Future whole-team executor; the V0.2 runtime currently executes one task."""
     def execute(self, plan: Plan) -> dict: ...
 
 
@@ -102,8 +102,13 @@ def choose_model(models: list[Model], tier: str, pinned: str | None = None) -> M
 
 
 def plan_team(task: str, profile: Profile, models: list[Model],
-              overrides: dict | None = None, static: bool = False) -> Plan:
+              overrides: dict | None = None, static: bool = False,
+              complexity_override: str | None = None) -> Plan:
     category, complexity, risk = analyze(task)
+    if complexity_override is not None:
+        if complexity_override not in ("low", "normal", "high"):
+            raise ATRException("复杂度必须是 low/normal/high")
+        complexity = complexity_override
     overrides = overrides or {}
     roles = list(profile.roles)
     notes = ["仅生成建议，不执行任务。模型目录验证不代表账号调用权限或额度验证。"]

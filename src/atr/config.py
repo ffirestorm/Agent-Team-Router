@@ -90,9 +90,11 @@ def load(root: Path):
     if doc.get("version") != 1:
         raise ATRException("不支持的 ATR 配置版本")
     get_adapter(doc.get("platform", ""))
-    unknown = set(doc) - {"version", "platform", "profile", "discovery", "models", "catalog", "profiles"}
+    unknown = set(doc) - {"version", "platform", "profile", "discovery", "models", "catalog", "profiles", "routing", "execution"}
     if unknown:
         raise ATRException(f"未知 ATR 配置字段：{sorted(unknown)}")
+    from atr.runtime.policy import limits_from
+    limits_from(doc.get("execution", {}))
     profile, rules = load_profile(doc.get("profile", ""), doc.get("profiles", {}))
     mappings = doc.get("models", {})
     catalog = doc.get("catalog", {})
@@ -117,6 +119,8 @@ def load(root: Path):
         models.append(Model(ident, tier, tuple(raw_efforts)))
     if not models:
         raise ATRException("至少配置一个模型映射")
+    from atr.task_policy import select_initial
+    select_initial("configuration validation", models, doc.get("routing", {}))
     return doc, profile, rules, models
 
 

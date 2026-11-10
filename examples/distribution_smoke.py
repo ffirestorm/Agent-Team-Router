@@ -42,15 +42,41 @@ def smoke(wheel: Path, wheelhouse: Path | None = None):
         run("-m", "atr", "--project", str(project), "rollback")
         if skill.exists():
             raise RuntimeError("Skill rollback failed")
+        runtime_preview = None
+        if version.startswith("0.2."):
+            (project / ".atr/config.toml").write_text('''version=1
+platform="codex"
+profile="development"
+[models]
+balanced="fixture-local"
+[catalog.fixture-local]
+efforts=["medium"]
+''', encoding="utf-8")
+            task = project / "task.json"
+            task.write_text(json.dumps({"id": "offline-preview", "description": "Add a feature",
+                "allowed_paths": ["feature.py"], "baseline": ["{python}", "-c", "pass"],
+                "verify": ["{python}", "-c", "pass"]}), encoding="utf-8")
+            preview = json.loads(run("-m", "atr", "--project", str(project), "run", str(task), "--dry-run"))
+            if not preview["dry_run"] or preview["initial"]["model"] != "fixture-local":
+                raise RuntimeError("Installed runtime preview did not load its packaged policy")
+            if json.loads(run("-m", "atr", "--project", str(project), "runs", "list")):
+                raise RuntimeError("Dry-run unexpectedly created an execution record")
+            runtime_preview = True
         return {"ok": True, "wheel": wheel.name, "version": version,
                 "isolated_import": True, "profiles": len(profiles),
                 "console_entrypoint": True,
+                "offline_runtime_preview": runtime_preview,
                 "packaged_skill_installed_and_rolled_back": True, "codex_required": False}
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--wheel", type=Path, default=Path("dist/agent_team_router-0.1.0-py3-none-any.whl"))
+    parser.add_argument("--wheel", type=Path, help="default: most recently built ATR wheel in dist/")
     parser.add_argument("--wheelhouse", type=Path, help="optional offline directory containing dependency wheels")
     args = parser.parse_args()
+    if args.wheel is None:
+        wheels = list(Path("dist").glob("agent_team_router-*.whl"))
+        if not wheels:
+            parser.error("Build a wheel first with python -m build")
+        args.wheel = max(wheels, key=lambda path: path.stat().st_mtime)
     print(json.dumps(smoke(args.wheel, args.wheelhouse), indent=2))

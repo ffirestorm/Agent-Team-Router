@@ -1,0 +1,89 @@
+{
+  "date": "2026-11-10",
+  "scope": "ATR real initial-policy engineering task; no WorkflowArena",
+  "runs": [
+    {
+      "id": "d27a89f84a6b49c18ecc8c0371b8e305",
+      "task_id": "atr-v02-initial-policy",
+      "status": "budget_exceeded",
+      "reason": "budget_exceeded",
+      "elapsed_seconds": 185.93144795810804,
+      "attempts": [
+        {
+          "id": 1,
+          "kind": "initial",
+          "model": "gpt-6.1-terra",
+          "effort": "medium",
+          "status": "failed",
+          "failure": "timeout",
+          "usage": {
+            "input_tokens": null,
+            "cached_input_tokens": null,
+            "output_tokens": null,
+            "cost": null,
+            "currency": null,
+            "cost_source": null
+          },
+          "verification": null
+        }
+      ]
+    },
+    {
+      "id": "802a9c5eb6b7494095063c969d65903f",
+      "task_id": "atr-v02-initial-policy",
+      "status": "needs_attention",
+      "reason": "not_an_upgrade_candidate:unknown",
+      "elapsed_seconds": 6.250891000032425,
+      "attempts": [
+        {
+          "id": 1,
+          "kind": "initial",
+          "model": "gpt-6.1-terra",
+          "effort": "medium",
+          "status": "failed",
+          "failure": "unknown",
+          "usage": {
+            "input_tokens": null,
+            "cached_input_tokens": null,
+            "output_tokens": null,
+            "cost": null,
+            "currency": null,
+            "cost_source": null
+          },
+          "verification": null
+        }
+      ]
+    },
+    {
+      "id": "34a63baa9ab847fcb4d235d72066382c",
+      "task_id": "atr-v02-initial-policy",
+      "status": "succeeded",
+      "reason": "acceptance_and_regression_passed",
+      "elapsed_seconds": 187.42267912486568,
+      "attempts": [
+        {
+          "id": 1,
+          "kind": "initial",
+          "model": "gpt-6.1-terra",
+          "effort": "medium",
+          "status": "succeeded",
+          "failure": "",
+          "usage": {
+            "input_tokens": 175412,
+            "cached_input_tokens": 158592,
+            "output_tokens": 2971,
+            "cost": null,
+            "currency": null,
+            "cost_source": null
+          },
+          "verification": {
+            "status": "passed",
+            "reason": "Defaults, actual TOML overrides, explicit choice, fallbacks and failure cases passed",
+            "failure_id": "atr-initial-policy-contract"
+          }
+        }
+      ]
+    }
+  ],
+  "note": "All setup failures retained. No real Sol upgrade occurred. Missing usage/cost is unknown, not zero. This is workflow acceptance, not a model benchmark."
+}
