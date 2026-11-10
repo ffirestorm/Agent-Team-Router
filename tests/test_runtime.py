@@ -253,8 +253,9 @@ def test_process_timeout_and_preemptive_cancel(tmp_path):
 def test_patch_applies_new_and_unterminated_files(tmp_path):
     diff = patch({'old.txt': b'old'}, {'old.txt': b'new', 'feature.py': b'good\n'})
     (tmp_path / 'old.txt').write_bytes(b'old')
-    result = subprocess.run(['git', 'apply', '--check', '-'], cwd=tmp_path, input=diff, text=True, capture_output=True)
-    assert result.returncode == 0, result.stderr
+    # Match the binary patch artifact: text-mode pipes translate LF to CRLF on Windows.
+    result = subprocess.run(['git', 'apply', '--check', '-'], cwd=tmp_path, input=diff.encode('utf-8'), capture_output=True)
+    assert result.returncode == 0, result.stderr.decode('utf-8', errors='replace')
 
 
 def test_transient_reconnect_does_not_invalidate_completed_turn():
