@@ -1,3 +1,5 @@
+> 本文保留 V0.1 发布时的历史验证。V0.2 见 [运行说明](v0.2-runtime.md)，V0.3 见 [集成与验证范围](v0.3-native.md)。
+
 # V0.1 验证记录
 
 日期：2026-11-09（Asia/Shanghai）。以下记录本地验证证据；远程构建状态见 [GitHub Actions](https://github.com/ffirestorm/Agent-Team-Router/actions)。本地验证未修改全局 Codex 配置或认证信息，未进行模型推理。

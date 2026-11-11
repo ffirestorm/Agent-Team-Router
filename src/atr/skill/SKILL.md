@@ -1,11 +1,12 @@
 ---
 name: agent-team-router
-description: Configure project-local Codex teams, explain task difficulty and model allocation, diagnose or roll back configuration, and run explicitly requested bounded engineering tasks with ATR.
+description: Configure project-local Codex teams, explain task difficulty and model allocation, diagnose or roll back configuration, install native conversation observation, and run explicitly requested bounded engineering tasks with ATR.
 ---
 
 Use the real `atr` CLI. Check `atr --version`: V0.1 only generates configuration;
-the V0.2 development CLI also supports bounded single-task execution. ATR does not
-intercept arbitrary host calls. Model tiers are heuristics; do not promise quota savings.
+V0.2 adds bounded single-task execution; V0.3 adds opt-in passive native hooks.
+Native observation requires one-time installation and Codex hook review. ATR does not
+intercept or switch arbitrary host calls. Model tiers are heuristics; do not promise quota savings.
 
 Resolve the user's target project. Commands accept `--project /absolute/project`.
 If ATR is unavailable, explain installation with `python -m pip install agent-team-router`
@@ -31,6 +32,24 @@ only if that package has actually been published; for a source checkout use
 - Inspect `atr runs show ID` and `atr runs report`. Candidate changes stay in an
   isolated snapshot with a patch; review them before integrating. `runs cancel ID`
   requests cancellation; `runs recover ID` never automatically reexecutes a model.
+
+For native conversation observation in V0.3, install once with `atr native install`
+(after `init`), previewable with `--dry-run`. It installs team configuration, this
+Skill, managed AGENTS.md instructions and a standalone local hook collector. Explain
+that the user must trust the project and review hooks in Codex `/hooks` or Settings >
+Hooks. Do not bypass trust. Installing alone does not prove recording is active.
+Use the session/turn/report path supplied by trusted SessionStart/UserPromptSubmit
+context. Before authorized useful delegation, announce intended role/model/task,
+then use native delegation tools. Follow the installed helper command to record a
+short non-secret task label against the returned agent ID; this is internal tool
+use, not a command the user must type. Read the current-turn report before the final
+answer and summarize observed agents/models and separate independent test evidence.
+If context or events are missing, report incomplete observation. Notes declare
+intent; only request hooks supply observed models. Do not fabricate a delegation,
+model invocation, success or usage. Respect higher-priority delegation restrictions.
+`atr native status`, `sessions`, and `report --session ID [--turn ID]` diagnose local
+records. `atr native uninstall` removes recording hooks/instructions, keeping the
+team, Skill and historical records. `atr rollback` can undo the installation.
 
 Only report success after the CLI succeeds. Do not edit global Codex config or auth.
 Do not bypass conflicts, strict validation, or modified-file rollback protection.

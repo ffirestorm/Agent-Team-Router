@@ -2,6 +2,7 @@ import argparse
 from importlib.resources import files
 import json
 import sys
+import sqlite3
 
 from atr import __version__
 from atr.config import initialize, load, project_root, use_profile
@@ -58,6 +59,23 @@ def parser():
         entry.add_argument("--project", default=argparse.SUPPRESS)
         if action in ("show", "cancel", "recover"):
             entry.add_argument("id")
+    native = command("native", help="install passive native Codex hooks and inspect their factual records")
+    actions = native.add_subparsers(dest="action", required=True)
+    for action in ("install", "uninstall", "status", "sessions", "report", "note"):
+        entry = actions.add_parser(action)
+        entry.add_argument("--project", default=argparse.SUPPRESS)
+        if action in ("install", "uninstall"):
+            entry.add_argument("--dry-run", action="store_true")
+        if action in ("report", "note"):
+            entry.add_argument("--session", required=True)
+            entry.add_argument("--turn")
+        if action == "report":
+            entry.add_argument("--format", choices=["json", "markdown"], default="markdown")
+        if action == "note":
+            entry.add_argument("--agent-id", required=True)
+            entry.add_argument("--role", required=True)
+            entry.add_argument("--task", required=True)
+            entry.add_argument("--model")
     return root
 
 
@@ -119,6 +137,28 @@ def run(args):
             record = execute(root, plan)
             emit(record)
             return 0 if record["status"] == "succeeded" else 1
+    elif args.command == "native":
+        from atr.native import collector
+        from atr.native.install import prepare_install, prepare_uninstall, status
+        if args.action in ("install", "uninstall"):
+            changes, before = (prepare_install if args.action == "install" else prepare_uninstall)(root)
+            print(diff(root, changes) or "无配置差异")
+            if args.dry_run:
+                print("Dry-run：未修改文件，未调用模型，未写入 hook 信任。")
+            else:
+                print(apply(root, changes, before))
+                if args.action == "install":
+                    print("首次启用：在 Codex 信任项目并通过 /hooks 或 Settings > Hooks 审阅并信任 hooks；新会话生效。")
+        elif args.action == "status":
+            emit(status(root))
+        elif args.action == "sessions":
+            emit(collector.sessions(root))
+        elif args.action == "report":
+            result = collector.report(root, args.session, args.turn)
+            emit(result) if args.format == "json" else print(collector.markdown(result))
+        elif args.action == "note":
+            collector.note(root, args.session, args.turn, args.agent_id, args.role, args.task, args.model)
+            emit({"source": "host-declared", "model_invocation": "not performed"})
     elif args.command == "runs":
         from atr.runtime.records import all_records, recover_run, report, request_cancel, show
         if args.action == "list":
@@ -138,7 +178,7 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         return run(args)
-    except (ATRException, OSError, ValueError, KeyError, TypeError) as exc:
+    except (ATRException, OSError, ValueError, KeyError, TypeError, sqlite3.Error) as exc:
         print(f"atr: {exc}", file=sys.stderr)
         return 2
 

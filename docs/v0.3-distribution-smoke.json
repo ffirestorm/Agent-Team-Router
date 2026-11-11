@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "wheel": "agent_team_router-0.3.0-py3-none-any.whl",
+  "version": "0.3.0",
+  "isolated_import": true,
+  "profiles": 5,
+  "console_entrypoint": true,
+  "offline_runtime_preview": true,
+  "offline_native_collector": true,
+  "packaged_skill_installed_and_rolled_back": true,
+  "codex_required": false
+}

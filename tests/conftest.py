@@ -32,7 +32,10 @@ def fake_codex(monkeypatch, tmp_path):
             return subprocess.CompletedProcess(arguments, 0, json.dumps(catalog), "")
         assert arguments == ["--strict-config", "app-server", "--print-startup-config"]
         config = tomllib.loads((home / "config.toml").read_text())
-        valid = {"model", "model_reasoning_effort", "sandbox_mode", "developer_instructions", "features", "agents", "approval_policy"}
+        valid = {"model", "model_reasoning_effort", "sandbox_mode", "developer_instructions", "features", "agents", "approval_policy", "hooks"}
+        hooks = config.get("hooks", {})
+        if any(not isinstance(groups, list) for groups in hooks.values()):
+            return subprocess.CompletedProcess(arguments, 1, "hook groups must be arrays", "")
         if set(config) - valid:
             return subprocess.CompletedProcess(arguments, 1, "unknown field", "")
         return subprocess.CompletedProcess(arguments, 0, '{"configRequirements":{},"appServerVersion":"test"}', "")

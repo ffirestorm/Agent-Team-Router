@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "codex": "codex-cli 0.167.0-alpha.3.2",
+  "discovered_events": [
+    "interrupt",
+    "postModelRequest",
+    "postToolUse",
+    "preModelRequest",
+    "preToolUse",
+    "sessionEnd",
+    "sessionStart",
+    "stop",
+    "subagentStart",
+    "subagentStop",
+    "userPromptSubmit"
+  ],
+  "registered_handlers": 11,
+  "trust_status": "untrusted",
+  "warnings": [],
+  "rpc_methods": [
+    "initialize",
+    "hooks/list"
+  ],
+  "inference_requested": false,
+  "hook_trust_written": false,
+  "callbacks_executed": false,
+  "limitations": "Real metadata discovery only. Collector callback tests use synthetic protocol fixtures; actual desktop activation requires user hook review."
+}

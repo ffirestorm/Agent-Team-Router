@@ -8,7 +8,7 @@ from atr.core import ATRException, plan_team
 from atr.storage import check_drift, read, state
 
 
-def prepare(root: Path):
+def prepare(root: Path, *, native=True):
     config_snapshot = read(root, CONFIG)
     doc, profile, rules, models = load(root)
     if read(root, CONFIG) != config_snapshot:
@@ -33,6 +33,11 @@ def prepare(root: Path):
     role_layers = {name.removeprefix(".codex/"): data for name, data in changes.items()
                    if name.startswith(".codex/agents/") and data is not None}
     adapter.validate(changes[".codex/config.toml"], role_layers)
+    if native:
+        from atr.native.install import instructions, manifest
+        installed = manifest(root)
+        if installed:
+            changes["AGENTS.md"] = instructions(changes["AGENTS.md"], installed)
     return changes, current
 
 

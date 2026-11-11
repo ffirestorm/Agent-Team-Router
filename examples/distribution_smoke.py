@@ -43,7 +43,7 @@ def smoke(wheel: Path, wheelhouse: Path | None = None):
         if skill.exists():
             raise RuntimeError("Skill rollback failed")
         runtime_preview = None
-        if version.startswith("0.2."):
+        if version.startswith(("0.2.", "0.3.")):
             (project / ".atr/config.toml").write_text('''version=1
 platform="codex"
 profile="development"
@@ -62,10 +62,30 @@ efforts=["medium"]
             if json.loads(run("-m", "atr", "--project", str(project), "runs", "list")):
                 raise RuntimeError("Dry-run unexpectedly created an execution record")
             runtime_preview = True
+        native_collector = None
+        if version.startswith("0.3."):
+            native = json.loads(run("-m", "atr", "--project", str(project), "native", "status"))
+            if native["installed"] or native["recording"] != "not_confirmed":
+                raise RuntimeError("Fresh wheel incorrectly claims native recording")
+            standalone = project / "native_collector.py"
+            run("-c", "from importlib.resources import files; from pathlib import Path; "
+                "Path(" + repr(str(standalone)) + ").write_bytes(files('atr.native').joinpath('collector.py').read_bytes())")
+            payload = {"cwd": str(project), "session_id": "distribution-fixture", "turn_id": "turn", "hook_event_name": "SessionStart"}
+            result = subprocess.run([str(python), "-I", str(standalone), "--project", str(project)],
+                                    input=json.dumps(payload).encode(), cwd=base, env=env,
+                                    check=True, capture_output=True, timeout=15)
+            if not json.loads(result.stdout).get("hookSpecificOutput") or result.stderr:
+                raise RuntimeError("Packaged standalone collector failed protocol fixture")
+            observed = json.loads(run("-m", "atr", "--project", str(project), "native", "report",
+                                      "--session", "distribution-fixture", "--format", "json"))
+            if observed["event_count"] != 1 or observed["agents"]:
+                raise RuntimeError("Packaged collector fabricated a model invocation")
+            native_collector = True
         return {"ok": True, "wheel": wheel.name, "version": version,
                 "isolated_import": True, "profiles": len(profiles),
                 "console_entrypoint": True,
                 "offline_runtime_preview": runtime_preview,
+                "offline_native_collector": native_collector,
                 "packaged_skill_installed_and_rolled_back": True, "codex_required": False}
 
 

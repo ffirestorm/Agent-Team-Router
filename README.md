@@ -1,6 +1,6 @@
 # Agent Team Router (ATR)
 
-面向 AI Coding Agent 的轻量配置与模型分工工具。**已发布的 V0.1 提供静态配置；当前源码是尚未正式发布的 `0.2.0.dev0`，增加三档初始策略和受控单任务执行。** Python 3.11+；原生 Codex 本机实测版本为 0.167.0-alpha.3.2。开发分支的跨平台模拟测试和打包验证状态见 [GitHub Actions](https://github.com/ffirestorm/Agent-Team-Router/actions/workflows/ci.yml)，不代表其他系统的真实 Codex 执行已经实测。
+面向 AI Coding Agent 的轻量配置与模型分工工具。**当前源码版本为 `0.3.0`：静态团队、三档初始策略、受控单任务执行，以及 Codex 原生会话记录。** Python 3.11+；原生 Codex 本机实测版本为 0.167.0-alpha.3.2。跨平台模拟测试和打包验证见 [GitHub Actions](https://github.com/ffirestorm/Agent-Team-Router/actions/workflows/ci.yml)，不代表其他系统的真实 Codex 执行已经实测。
 
 ## 安装与快速上手
 
@@ -34,7 +34,19 @@ atr skill install --project demo-project
 - 角色专属模型、推理强度、指令和 sandbox；生成 `.codex/config.toml`、角色 TOML、AGENTS.md 托管区块。
 - 保留 TOML 注释与已有设置；dry-run diff、冲突检测、备份、幂等更新、事务故障恢复与回滚。
 - 项目级标准 Skill 安装至 `.agents/skills/agent-team-router/SKILL.md`，支持自然语言入口。
-- 开发版：simple/medium/complex 三档策略、手动难度覆写、隔离单任务执行、固定验收、失败分类、一次受限升级、取消、运行记录和用量汇总。
+- simple/medium/complex 三档策略、手动难度覆写、隔离单任务执行、固定验收、失败分类、一次受限升级、取消、运行记录和用量汇总。
+- V0.3：一次安装原生 hooks，过程分工说明、Agent/实际请求模型记录、会话/轮次报告与收尾汇总。
+
+## V0.3：正常对话，自动记录
+
+```bash
+atr native install --dry-run
+atr native install
+```
+
+在已 init 的项目中运行一次；随后在 Codex 信任项目并通过 `/hooks` 或 Settings > Hooks 审阅信任项目 hooks，开启新会话。之后正常提出任务，无需每次输入 ATR 命令。主 Agent 按指令在分配前说明角色、计划模型和任务，最终读取报告汇总；hooks 自动采集真实事件。说明和汇总依赖主 Agent 遵循指令，安装本身不证明正在记录。
+
+记录保存在 `.atr/native/`；可选 `atr native status`、`sessions`、`report --session ID` 查看。报告区分计划与观测，不将 Agent 停止视为验收通过，不推算未知费用，也不通过 hooks 改模型。支持安全卸载和回滚。首次信任、隐私与覆盖边界见 [V0.3 原生集成说明](docs/v0.3-native.md)。
 
 ## 当前不支持
 
@@ -77,7 +89,7 @@ atr init --catalog examples/catalog.json --model-map fast=local-fast \
 
 编辑 `.atr/config.toml` 可修改档位映射、角色规则、模型、推理强度、指令和并发数，示例见 [examples/config.toml](examples/config.toml)。每个模型只映射一个档位；缺失档位可回退，推理强度显式覆写必须被对应模型支持。只读角色不会因覆写变为可写。
 
-## V0.2 开发版：三档策略与受控执行
+## V0.2 受控执行：三档策略与受控执行
 
 `plan` 新增 `initial_execution`：简单任务默认 fast/low，中等 balanced/medium，复杂 reasoning/high。可在 `[routing.simple]`、`[routing.medium]`、`[routing.complex]` 中覆写 tier、model、effort；也可用 `--complexity` 手动指定。静态团队建议与单任务初始模型分别展示，`apply` 仍只生成 Profile 对应的静态团队。
 
@@ -96,7 +108,7 @@ atr runs cancel RUN_ID
 
 候选补丁和日志保存在 `.atr/runs/`。权限、网络、额度、环境、验证器和未知错误不触发升级。Token 门槛只阻止下一次调用；费用不可观测时为 null。已开始但基线失败、取消和运行中的任务仍保留在报告分母，已满足且无需调用模型的任务单列。
 
-完整契约、配置、权限边界与真实工程证据见 [V0.2 运行说明](docs/v0.2-runtime.md)。首个真实任务由 Terra 实现了正在使用的三档策略模块；没有人为制造失败或实际调用 Sol。原生执行仅在本机实测，V0.2 尚未正式发布。
+完整契约、配置、权限边界与真实工程证据见 [V0.2 运行说明](docs/v0.2-runtime.md)。首个真实任务由 Terra 实现了正在使用的三档策略模块；没有人为制造失败或实际调用 Sol。原生执行仅在本机实测，该模块随 V0.3 源码提供。
 
 ## 安全应用、冲突与回滚
 
