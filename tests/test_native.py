@@ -99,7 +99,8 @@ def test_native_concurrent_subprocesses(project):
                               input=json.dumps(payload).encode(), capture_output=True, timeout=15)
     with ThreadPoolExecutor(max_workers=6) as pool:
         results = list(pool.map(write, range(18)))
-    assert all(r.returncode == 0 and not r.stderr for r in results)
+    failures = [(r.returncode, r.stderr.decode('utf-8', errors='replace')) for r in results if r.returncode or r.stderr]
+    assert not failures, failures
     result = c.report(project, 'concurrent')
     assert result['event_count'] == 18
     assert result['agents'][0]['known_usage']['input_tokens'] == 18
