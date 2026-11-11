@@ -465,7 +465,13 @@ def main(argv=None):
             raise ValueError('hook input too large')
         response = collect(Path(args.project), json.loads(data), args.installation)
     except Exception as exc:
-        print('ATR observation unavailable: ' + type(exc).__name__, file=sys.stderr)
+        # Report code locations, never payloads, raw errors, paths or credentials.
+        trace = exc.__traceback__
+        frames = []
+        while trace:
+            frames.append(f'{trace.tb_frame.f_code.co_name}:{trace.tb_lineno}')
+            trace = trace.tb_next
+        print('ATR observation unavailable: ' + type(exc).__name__ + ' [' + ' > '.join(frames[-3:]) + ']', file=sys.stderr)
         response = {}
     print(json.dumps(response, ensure_ascii=False))
     return 0
