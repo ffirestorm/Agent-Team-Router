@@ -24,6 +24,22 @@ DELEGATION = re.compile(r"(^|[_.])(?:spawn_agent|wait_agent|wait|send_input|clos
 MAX_INPUT = 1024 * 1024
 
 
+def comparison_path(path):
+    """Normalize equivalent Windows namespaces AFTER filesystem resolution.
+
+    realpath(strict=False) can retain the extended prefix when a missing parent
+    is created between its two Win32 lookups. That does not change containment.
+    Only drive and UNC filesystem namespaces are folded, never device paths.
+    """
+    if isinstance(path, PureWindowsPath):
+        value = str(path)
+        if value.lower().startswith('\\\\?\\unc\\'):
+            return PureWindowsPath('\\\\' + value[8:])
+        if re.match(r'^\\\\\?\\[A-Za-z]:\\', value):
+            return PureWindowsPath(value[4:])
+    return path
+
+
 def safe(root, relative):
     rel = Path(relative)
     win = PureWindowsPath(relative)
@@ -34,7 +50,7 @@ def safe(root, relative):
         target = target / part
         if target.is_symlink():
             raise ValueError('native observation path is a symlink')
-    if not target.resolve().is_relative_to(root.resolve()):
+    if not comparison_path(target.resolve()).is_relative_to(comparison_path(root.resolve())):
         raise ValueError('native observation path escapes project')
     return target
 
@@ -353,7 +369,7 @@ def export(connection, root, session, turn=None):
 def collect(root, payload, installation='unknown'):
     root = Path(root).resolve(strict=True)
     cwd = payload.get('cwd') if isinstance(payload, dict) else None
-    if not isinstance(cwd, str) or not Path(cwd).resolve().is_relative_to(root):
+    if not isinstance(cwd, str) or not comparison_path(Path(cwd).resolve()).is_relative_to(comparison_path(root)):
         raise ValueError('hook cwd is outside the bound project')
     if safe(root, '.atr/native/disabled').exists():
         return {}

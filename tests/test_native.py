@@ -300,3 +300,18 @@ def test_manual_notes_do_not_claim_hook_recording(project):
     result = c.report(project, 's')
     assert result['hook_event_count'] == 0 and result['warnings']
     assert status(project)['recording'] == 'not_confirmed'
+
+
+def test_windows_extended_namespace_comparison_preserves_boundaries():
+    from pathlib import PureWindowsPath as W
+    normal = W('C:/project/data/file')
+    extended = W('\\\\?\\C:\\project\\data\\file')
+    assert c.comparison_path(extended) == normal
+    assert c.comparison_path(extended).is_relative_to(W('C:/project'))
+    assert not c.comparison_path(W('\\\\?\\C:\\outside\\file')).is_relative_to(W('C:/project'))
+    assert not c.comparison_path(W('\\\\?\\D:\\project\\file')).is_relative_to(W('C:/project'))
+    unc = W('\\\\?\\UNC\\server\\share\\project\\file')
+    assert c.comparison_path(unc).is_relative_to(W('\\\\server\\share\\project'))
+    device = W('\\\\.\\PhysicalDrive0')
+    assert c.comparison_path(device) == device
+    assert not c.comparison_path(device).is_relative_to(W('C:/project'))
