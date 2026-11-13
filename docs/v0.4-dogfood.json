@@ -1,0 +1,50 @@
+{
+  "id": "9a5492948cc14ef5b3c11b366e097b31",
+  "task_id": "atr-v04-model-metrics",
+  "status": "budget_exceeded",
+  "reason": "budget_exceeded",
+  "elapsed_seconds": 190.40840929187834,
+  "changed_paths": [
+    "src/atr/runtime/metrics.py",
+    "tests/test_model_metrics.py"
+  ],
+  "source_sha256": "450d750b272f31a0a2f2da2ab9bff3366183386980d217f4222aa7a5a74a4c6e",
+  "attempts": [
+    {
+      "id": 1,
+      "kind": "initial",
+      "model": "gpt-6.1-terra",
+      "effort": "medium",
+      "status": "failed",
+      "failure": "timeout",
+      "seconds": 180.03110920800827,
+      "usage": {
+        "input_tokens": 93950,
+        "cached_input_tokens": 84096,
+        "output_tokens": 2729,
+        "cost": null,
+        "currency": null,
+        "cost_source": null
+      },
+      "decision": {
+        "action": "stop",
+        "reason": "budget_exceeded"
+      }
+    }
+  ],
+  "independent_post_timeout_review": {
+    "acceptance": "passed",
+    "candidate_regression": {
+      "passed": 194,
+      "skipped": 1
+    },
+    "integrated_after_review": true,
+    "original_record_modified": false
+  },
+  "native_recording": "off throughout engineering self-test",
+  "limitations": [
+    "Timeout is not evidence of model capability failure. No Sol upgrade was attempted.",
+    "Independent post-timeout acceptance does not make the executor run successful.",
+    "Unmatched engineering tasks are not controlled model benchmarks."
+  ]
+}

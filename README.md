@@ -1,6 +1,6 @@
 # Agent Team Router (ATR)
 
-面向 AI Coding Agent 的轻量配置与模型分工工具。**当前源码版本为 `0.3.0`：静态团队、三档初始策略、受控单任务执行，以及 Codex 原生会话记录。** Python 3.11+；原生 Codex 本机实测版本为 0.167.0-alpha.3.2。跨平台模拟测试和打包验证见 [GitHub Actions](https://github.com/ffirestorm/Agent-Team-Router/actions/workflows/ci.yml)，不代表其他系统的真实 Codex 执行已经实测。
+面向 AI Coding Agent 的轻量配置与模型分工工具。**当前源码版本为 `0.4.0`：静态团队、三档初始策略、受控单任务执行，以及 Codex 原生会话记录。** Python 3.11+；原生 Codex 本机实测版本为 0.167.0-alpha.3.2。跨平台模拟测试和打包验证见 [GitHub Actions](https://github.com/ffirestorm/Agent-Team-Router/actions/workflows/ci.yml)，不代表其他系统的真实 Codex 执行已经实测。
 
 ## 安装与快速上手
 
@@ -37,14 +37,29 @@ atr skill install --project demo-project
 - simple/medium/complex 三档策略、手动难度覆写、隔离单任务执行、固定验收、失败分类、一次受限升级、取消、运行记录和用量汇总。
 - V0.3：一次安装原生 hooks，过程分工说明、Agent/实际请求模型记录、会话/轮次报告与收尾汇总。
 
-## V0.3：正常对话，自动记录
+## V0.4：记录默认关闭，按需管理
+
+原生记录默认 **off**，首次安装和没有显式设置的升级均不采集。当前项目也保持关闭。需要记录时才明确使用 `atr native on`（summary）或 `--level detailed`；`atr native off` 随时停止。安装/更新、任务草稿和其他功能不会自动开启记录。
+
+```bash
+atr native status
+atr native health
+atr native report --latest --turn latest
+atr native cleanup --older-than-days 30   # 默认只预览
+atr task draft "实现缓存过期" --allow src/cache.py   # 缺少验收时返回待补提案
+atr runs report --by-model
+```
+
+支持按年龄、会话数量或容量清理历史，默认保护近期/未完成会话，显式执行前要求关闭记录。支持当前/最近会话与 Agent 查询、custom/pytest 任务契约模板、按模型统计。详见 [V0.4 管理与工程自测](docs/v0.4-management.md)。本版真实 Terra 工程自测超时后按规则停止、未升级；候选经独立验收和回归后集成，原超时记录保留。
+
+## 原生会话记录（沿用 V0.3，V0.4 默认关闭）
 
 ```bash
 atr native install --dry-run
 atr native install
 ```
 
-在已 init 的项目中运行一次；随后在 Codex 信任项目并通过 `/hooks` 或 Settings > Hooks 审阅信任项目 hooks，开启新会话。之后正常提出任务，无需每次输入 ATR 命令。主 Agent 按指令在分配前说明角色、计划模型和任务，最终读取报告汇总；hooks 自动采集真实事件。说明和汇总依赖主 Agent 遵循指令，安装本身不证明正在记录。
+在已 init 的项目中运行一次；随后在 Codex 信任项目并通过 `/hooks` 或 Settings > Hooks 审阅信任项目 hooks，明确用 `atr native on` 启用并开启新会话后，正常提出任务，无需每次输入 ATR 命令。主 Agent 按指令在分配前说明角色、计划模型和任务，最终读取报告汇总；hooks 自动采集真实事件。说明和汇总依赖主 Agent 遵循指令，安装本身不证明正在记录。
 
 记录保存在 `.atr/native/`；可选 `atr native status`、`sessions`、`report --session ID` 查看。报告区分计划与观测，不将 Agent 停止视为验收通过，不推算未知费用，也不通过 hooks 改模型。支持安全卸载和回滚。首次信任、隐私与覆盖边界见 [V0.3 原生集成说明](docs/v0.3-native.md)。
 
@@ -153,6 +168,7 @@ src/atr/
   core.py                 # 平台无关任务分析、模型选择、团队规划、未来接口
   profiles.py             # 五种统一 Profile 与覆写规则
   task_policy.py          # 三档初始模型策略（经实际自测任务实现）
+  native/                 # 默认关闭的采集、开关、健康、查询与清理
   runtime/                # 任务契约、进程、验证、失败分类、升级、记录
   config.py               # 项目设置与模型注册数据
   adapters/codex.py       # Codex 发现、渲染和原生验证

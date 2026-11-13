@@ -57,25 +57,56 @@ def parser():
     for action in ("list", "report", "show", "cancel", "recover"):
         entry = actions.add_parser(action)
         entry.add_argument("--project", default=argparse.SUPPRESS)
+        if action == "report":
+            entry.add_argument("--by-model", action="store_true")
         if action in ("show", "cancel", "recover"):
             entry.add_argument("id")
     native = command("native", help="install passive native Codex hooks and inspect their factual records")
     actions = native.add_subparsers(dest="action", required=True)
-    for action in ("install", "uninstall", "status", "sessions", "report", "note"):
+    for action in ("install", "uninstall", "status", "sessions", "report", "note", "on", "off", "health", "cleanup"):
         entry = actions.add_parser(action)
         entry.add_argument("--project", default=argparse.SUPPRESS)
         if action in ("install", "uninstall"):
             entry.add_argument("--dry-run", action="store_true")
         if action in ("report", "note"):
-            entry.add_argument("--session", required=True)
+            entry.add_argument("--session", required=action == "note")
             entry.add_argument("--turn")
+        if action == "on":
+            entry.add_argument("--level", choices=["summary", "detailed"], default="summary")
+        if action == "health":
+            entry.add_argument("--recent-minutes", type=int, default=15)
+        if action == "cleanup":
+            mode = entry.add_mutually_exclusive_group()
+            mode.add_argument("--execute", action="store_true")
+            mode.add_argument("--dry-run", action="store_true")
+            entry.add_argument("--older-than-days", type=int)
+            entry.add_argument("--keep-sessions", type=int)
+            entry.add_argument("--max-mib", type=float)
+            entry.add_argument("--include-incomplete", action="store_true")
         if action == "report":
+            selector = entry.add_mutually_exclusive_group()
+            selector.add_argument("--latest", action="store_true")
+            selector.add_argument("--current", action="store_true")
+            entry.add_argument("--agent")
             entry.add_argument("--format", choices=["json", "markdown"], default="markdown")
         if action == "note":
             entry.add_argument("--agent-id", required=True)
             entry.add_argument("--role", required=True)
             entry.add_argument("--task", required=True)
             entry.add_argument("--model")
+    task = command("task", help="draft task contracts without executing models or verifier commands")
+    actions = task.add_subparsers(dest="action", required=True)
+    actions.add_parser("templates").add_argument("--project", default=argparse.SUPPRESS)
+    draft = actions.add_parser("draft")
+    draft.add_argument("--project", default=argparse.SUPPRESS)
+    draft.add_argument("description")
+    draft.add_argument("--id")
+    draft.add_argument("--allow", action="append", default=[])
+    draft.add_argument("--template", choices=["custom", "pytest"], default="custom")
+    draft.add_argument("--baseline-json")
+    draft.add_argument("--verify-json")
+    draft.add_argument("--acceptance-test", action="append", default=[])
+    draft.add_argument("--output")
     return root
 
 
@@ -137,10 +168,31 @@ def run(args):
             record = execute(root, plan)
             emit(record)
             return 0 if record["status"] == "succeeded" else 1
+    elif args.command == "task":
+        from atr.runtime.draft import draft_contract, templates
+        if args.action == "templates":
+            emit(templates())
+        else:
+            emit(draft_contract(root, args.description, args.id, args.allow, args.template,
+                                args.baseline_json, args.verify_json, args.acceptance_test, args.output))
     elif args.command == "native":
         from atr.native import collector
         from atr.native.install import prepare_install, prepare_uninstall, status
-        if args.action in ("install", "uninstall"):
+        from atr.native import manage
+        if args.action == "on":
+            from atr.native.install import manifest
+            if not manifest(root):
+                raise ATRException("先 atr native install；安装后仍默认关闭")
+            emit(collector.set_mode(root, args.level))
+        elif args.action == "off":
+            emit(collector.set_mode(root, "off"))
+        elif args.action == "health":
+            emit(manage.health(root, args.recent_minutes))
+        elif args.action == "cleanup":
+            emit(manage.cleanup(root, execute=args.execute, days=args.older_than_days,
+                                keep=args.keep_sessions, max_mib=args.max_mib,
+                                include_incomplete=args.include_incomplete))
+        elif args.action in ("install", "uninstall"):
             changes, before = (prepare_install if args.action == "install" else prepare_uninstall)(root)
             print(diff(root, changes) or "无配置差异")
             if args.dry_run:
@@ -148,23 +200,29 @@ def run(args):
             else:
                 print(apply(root, changes, before))
                 if args.action == "install":
-                    print("首次启用：在 Codex 信任项目并通过 /hooks 或 Settings > Hooks 审阅并信任 hooks；新会话生效。")
+                    print("记录默认关闭；需要时 atr native on。首次启用：在 Codex 信任项目并通过 /hooks 或 Settings > Hooks 审阅并信任 hooks；新会话生效。")
         elif args.action == "status":
             emit(status(root))
         elif args.action == "sessions":
-            emit(collector.sessions(root))
+            emit(manage.inventory(root))
         elif args.action == "report":
-            result = collector.report(root, args.session, args.turn)
+            if args.session and (args.latest or args.current):
+                raise ATRException("--session 不能与 --latest/--current 同用")
+            result = manage.query(root, args.session, args.latest, args.current, args.turn, args.agent)
             emit(result) if args.format == "json" else print(collector.markdown(result))
         elif args.action == "note":
             collector.note(root, args.session, args.turn, args.agent_id, args.role, args.task, args.model)
-            emit({"source": "host-declared", "model_invocation": "not performed"})
+            emit({"source": "host-declared", "model_invocation": "not performed", "recorded": collector.settings(root)["mode"] != "off"})
     elif args.command == "runs":
         from atr.runtime.records import all_records, recover_run, report, request_cancel, show
         if args.action == "list":
             emit([{key: run[key] for key in ("id", "task_id", "status", "created_at")} for run in all_records(root)])
         elif args.action == "report":
-            emit(report(root))
+            if args.by_model:
+                from atr.runtime.metrics import summarize_models
+                emit(summarize_models(all_records(root)))
+            else:
+                emit(report(root))
         elif args.action == "show":
             emit(show(root, args.id))
         elif args.action == "cancel":

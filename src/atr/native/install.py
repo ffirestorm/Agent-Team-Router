@@ -43,8 +43,12 @@ def manifest(root):
 
 def instructions(data, record):
     text = data.decode()
-    content = f'''### ATR native observation (V0.3)
-Native hooks collect facts; instructions below provide conversation narration.
+    content = f'''### ATR native observation (V0.4)
+Native recording defaults OFF. Installation is not permission to enable recording.
+Check `.atr/native/settings.json`: only explicit mode summary/detailed enables it;
+`.atr/native/disabled` overrides it. When off, skip notes/reports and do not ask the
+user to enable recording for ordinary tasks. Say recording is off when relevant.
+When enabled, native hooks collect facts; instructions provide narration.
 Before useful, authorized delegation, announce the intended role, configured model
 (or unknown) and task. Respect higher-priority host restrictions on delegation.
 Use actual native tools. Do not announce a planned assignment as a completed call.
@@ -52,7 +56,7 @@ SessionStart/UserPromptSubmit context supplies the session, turn and report path
 After spawn returns an ID, internally record a SHORT NON-SECRET task label with:
 `{record['command']} --note --session SESSION --turn TURN --agent-id ID --role ROLE --task 'short label'`
 Omit --turn if unavailable; never guess IDs. Notes declare intent, not model proof.
-Before the final response, read the current-turn summary.md, or internally run:
+Before the final response, derive a fresh report internally (files may be snapshots):
 `{record['command']} --report --session SESSION --turn TURN`
 Summarize observed agent/model/task/status and separate test evidence in the final
 reply. Missing hooks/models/usage mean unknown. Stop/completed request is not task
@@ -160,6 +164,9 @@ def status(root):
         check_drift(root, state(root))
     except ATRException as exc:
         conflicts.append(str(exc))
+    from atr.native.manage import health
+    from atr.native.collector import settings
+    diagnostics = health(root)
     observed = sessions(root)
     connection = connect(root)
     try:
@@ -168,9 +175,10 @@ def status(root):
         if connection:
             connection.close()
     return {'installed': record is not None, 'version': record.get('version') if record else None,
-            'bound_project': str(root), 'disabled': (root / '.atr/native/disabled').exists(),
+            'bound_project': str(root), 'disabled': settings(root)['mode'] == 'off',
+            'mode': settings(root)['mode'], 'health': diagnostics,
             'trust': 'not_checked: review exact hooks in Codex /hooks or Settings > Hooks',
-            'recording': 'events_observed' if hook_count else 'not_confirmed',
+            'recording': 'off' if settings(root)['mode'] == 'off' else diagnostics['state'],
             'observed_hook_events': hook_count,
             'sessions': len(observed), 'conflicts': conflicts,
             'python_exists': Path(record['python']).is_file() if record else None,

@@ -1,0 +1,18 @@
+{
+  "id": "atr-v04-model-metrics",
+  "description": "Implement the V0.4 model-by-model engineering report used for ongoing ATR self-tests. Only create src/atr/runtime/metrics.py and tests/test_model_metrics.py. Export summarize_models(records), a pure stdlib-only function returning {models: list, note: nonempty string}. Each input record is a dict with optional id and attempts list; each attempt is a dict with model, status, kind, failure, seconds, usage. Group by model (missing model use 'unknown'), sorted alphabetically. Each row must have model, tasks (distinct input records using that model, including repeated attempts counted once per record, regardless of missing/duplicate record IDs), attempts, succeeded_attempts (status=succeeded), attempt_success_rate (success/attempts), failures (counts of nonempty failure strings), upgraded_attempts (kind=escalation), succeeded_upgraded_attempts, elapsed_seconds (sum known seconds), cost (sum only when ALL attempt costs known else None), cost_missing_attempts, token_usage for input_tokens/output_tokens/cached_input_tokens each {known_subtotal,missing_attempts,total}. Missing or None values must stay unknown, never zero-fill. Reject boolean/negative/nonfinite numeric usage and costs as missing; skip invalid/non-dict attempts and treat absent/non-list attempts as empty. Missing seconds adds 0 but include seconds_missing_attempts to expose uncertainty. Cached input is subset of input; never add it to input total. No model ranking, savings claim, or causal attribution; note must explain attempt-level statistics and unmatched task difficulty. Do not mutate inputs. Empty input returns models=[]. Write meaningful tests for missing usage, repeated attempts/record identity, failure and escalation, invalid numerics and input immutability. Do not modify other files. This is a real feature that the CLI will consume via atr runs report --by-model.",
+  "allowed_paths": [
+    "src/atr/runtime/metrics.py",
+    "tests/test_model_metrics.py"
+  ],
+  "baseline": [
+    "{python}",
+    "-m",
+    "pytest",
+    "-q"
+  ],
+  "verify": [
+    "{python}",
+    "{task_dir}/verify_model_metrics.py"
+  ]
+}

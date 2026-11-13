@@ -15,6 +15,11 @@ from atr.service import prepare
 from atr.storage import apply, read, rollback
 
 
+@pytest.fixture(autouse=True)
+def recording_enabled(project):
+    c.set_mode(project, 'detailed')
+
+
 def event(root, kind, session='parent', turn='t1', **fields):
     payload = dict(cwd=str(root), hook_event_name=kind, session_id=session, turn_id=turn)
     payload.update(fields)
@@ -79,14 +84,14 @@ def test_turn_session_isolation_and_retries(project):
 def test_no_events_no_false_active_and_fail_open(project):
     empty = c.report(project, 'missing')
     assert empty['warnings'] and empty['event_count'] == 0 and empty['cost'] is None
-    assert not (project / '.atr').exists()
+    assert not (project / '.atr/native/events.sqlite3').exists()
     script = Path(c.__file__)
     for payload in [b'not json', b'{}', b'x' * (c.MAX_INPUT + 1)]:
         result = subprocess.run([sys.executable, str(script), '--project', str(project)],
                                 input=payload, capture_output=True)
         assert result.returncode == 0 and json.loads(result.stdout) == {}
         assert b'not json' not in result.stderr
-    assert status(project)['recording'] == 'not_confirmed'
+    assert status(project)['recording'] == 'error'
 
 
 def test_native_concurrent_subprocesses(project):
@@ -116,7 +121,7 @@ def test_paths_disabled_ignored_tool_and_interruption(project, tmp_path):
     with pytest.raises(ValueError):
         c.collect(project, {'cwd': str(project.parent), 'hook_event_name': 'Stop', 'session_id': 's'})
     assert event(project, 'PreToolUse', tool_name='exec_command', tool_input={'cmd': 'PRIVATE'}) == {}
-    assert not (project / '.atr').exists()
+    assert not (project / '.atr/native/events.sqlite3').exists()
     event(project, 'PreModelRequest', model='main-model')
     event(project, 'Interrupt')
     result = c.report(project, 'parent')
@@ -129,7 +134,7 @@ def test_paths_disabled_ignored_tool_and_interruption(project, tmp_path):
 
 def test_database_symlink_rejected(project):
     folder = project / '.atr/native'
-    folder.mkdir(parents=True)
+    folder.mkdir(parents=True, exist_ok=True)
     target = project / 'outside.sqlite3'
     target.write_bytes(b'untouched')
     try:

@@ -15,7 +15,7 @@ import shlex
 import sys
 import tempfile
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 EVENTS = ("SessionStart", "UserPromptSubmit", "SubagentStart", "SubagentStop",
           "PreToolUse", "PostToolUse", "PreModelRequest", "PostModelRequest",
           "Stop", "Interrupt", "SessionEnd")
@@ -95,6 +95,36 @@ def location(root, session, turn=None):
     if turn:
         base += f'/turns/{digest(turn)[:32]}'
     return safe(root, base)
+
+
+SETTINGS = '.atr/native/settings.json'
+MODES = ('off', 'summary', 'detailed')
+
+
+def settings(root):
+    path = safe(root, SETTINGS)
+    data = json.loads(path.read_bytes()) if path.exists() else {'mode': 'off'}
+    if not isinstance(data, dict) or set(data) - {'mode', 'changed_at'} or data.get('mode') not in MODES:
+        raise ValueError('invalid native settings')
+    result = dict(data)
+    if safe(root, '.atr/native/disabled').exists():
+        result['mode'] = 'off'
+    return result
+
+
+def set_mode(root, mode):
+    if mode not in MODES:
+        raise ValueError('invalid recording mode')
+    from atr.storage import locked
+    with locked(root):
+        value = {'mode': mode, 'changed_at': datetime.now(timezone.utc).isoformat()}
+        atomic(safe(root, SETTINGS), json.dumps(value).encode())
+        if mode != 'off':
+            safe(root, '.atr/native/disabled').unlink(missing_ok=True)
+        else:
+            # Also stops an older installed V0.3 launcher during upgrade.
+            atomic(safe(root, '.atr/native/disabled'), b'')
+    return value
 
 
 def normalize(payload):
@@ -342,6 +372,8 @@ def markdown(report):
         return str(value if value is not None else '未知').replace('|', '\\|').replace('\n', ' ').replace('`', "'")[:240]
     lines = ['# ATR 原生执行记录', '', f"Session: {cell(report['session_id'])}; turn: {cell(report['turn_id'])}; 截至事件 {report['as_of_sequence']}。", '',
              '| Agent | 角色 | 宿主报告的请求模型 | 任务标签 | 执行状态 | 验证 |', '|---|---|---|---|---|---|']
+    if 'recording_mode' in report:
+        lines[3:3] = [f"当前采集模式：{cell(report['recording_mode'])}。关闭时查询的是历史记录。", '']
     for agent in report['agents']:
         lines.append('| ' + ' | '.join(cell(value) for value in [agent['agent_id'], agent['role'], ', '.join(agent['models']) or None,
                                                                agent['task'], agent['execution_status'], agent['verification_status']]) + ' |')
@@ -371,30 +403,52 @@ def collect(root, payload, installation='unknown'):
     cwd = payload.get('cwd') if isinstance(payload, dict) else None
     if not isinstance(cwd, str) or not comparison_path(Path(cwd).resolve()).is_relative_to(comparison_path(root)):
         raise ValueError('hook cwd is outside the bound project')
-    if safe(root, '.atr/native/disabled').exists():
+    mode = settings(root)['mode']
+    if mode == 'off' or safe(root, '.atr/native/maintenance').exists():
+        return {}
+    if mode == 'summary' and payload.get('hook_event_name') in ('PreToolUse', 'PostToolUse'):
         return {}
     event = normalize(payload)
     if event is None:
         return {}
+    if mode == 'summary':
+        for key in ('task_sha256', 'error_sha256'):
+            event.pop(key, None)
+    event['recording_mode'] = mode
     event['installation'] = text(installation, 100)
     event['collector_version'] = VERSION
     connection = connect(root, create=True)
     try:
         connection.execute('BEGIN IMMEDIATE')
+        mode = settings(root)['mode']
+        if mode == 'off' or safe(root, '.atr/native/maintenance').exists():
+            return {}
+        if mode == 'summary':
+            if event['event'] in ('PreToolUse', 'PostToolUse'):
+                return {}
+            for key in ('task_sha256', 'error_sha256'):
+                event.pop(key, None)
+        event['recording_mode'] = mode
         connection.execute('INSERT INTO events(session,turn,agent,kind,data) VALUES (?,?,?,?,?)',
                            (event['session_id'], event.get('turn_id'), event.get('agent_id'), event['event'], json.dumps(event, ensure_ascii=False)))
         # The event database is authoritative. Export failures must not erase facts.
         connection.commit()
         connection.execute('BEGIN IMMEDIATE')
-        affected = ancestors(connection, event['session_id'])
+        affected = ancestors(connection, event['session_id']) if mode == 'detailed' or event['event'] in ('SessionStart', 'UserPromptSubmit', 'Stop', 'Interrupt', 'SessionEnd', 'SubagentStop') else set()
         for session in affected:
             export(connection, root, session)
             if event.get('turn_id') and session == event['session_id']:
                 export(connection, root, session, event['turn_id'])
             # Refresh parent-turn views when the model request belongs to a child session.
-            for row in connection.execute('SELECT DISTINCT turn FROM events WHERE session=? AND kind IN (?,?,?) AND turn IS NOT NULL',
-                                          (session, 'SubagentStart', 'UserPromptSubmit', 'ATRPlan')):
-                export(connection, root, session, row[0])
+            if event['event'] in ('Stop', 'SessionEnd', 'SubagentStop'):
+                for row in connection.execute('SELECT DISTINCT turn FROM events WHERE session=? AND kind IN (?,?,?) AND turn IS NOT NULL',
+                                              (session, 'SubagentStart', 'UserPromptSubmit', 'ATRPlan')):
+                    if mode == 'detailed':
+                        export(connection, root, session, row[0])
+                if mode == 'summary':
+                    latest = connection.execute('SELECT turn FROM events WHERE session=? AND turn IS NOT NULL ORDER BY seq DESC LIMIT 1', (session,)).fetchone()
+                    if latest:
+                        export(connection, root, session, latest[0])
         connection.commit()
     finally:
         connection.close()
@@ -404,7 +458,7 @@ def collect(root, payload, installation='unknown'):
         instructions = (f"ATR native observation is installed for this project. Session {event['session_id']}. "
                         f"Turn {event.get('turn_id') or 'unavailable'}. Current observation report: {path}. Internal helper: {helper}. Before actual delegation, tell the user the intended role, model and task. "
                         "Distinguish plans from confirmed starts. After spawn returns an agent ID, record a short non-secret task label using the helper with --note --session SESSION [--turn TURN] --agent-id ID --role ROLE --task 'short label' (internal tool use, not a user step). "
-                        "Before final response, read the current report and summarize observed agents/models, outcomes and independent test evidence. "
+                        "Before final response, use the helper --report --session SESSION [--turn TURN] to derive a fresh report (summary files may be snapshots), then summarize observed agents/models, outcomes and independent test evidence. "
                         "Do not claim tests passed from a stopped agent or completed model request. If hooks are missing, say observation is incomplete. "
                         "Do not ask the user to type ATR per task. Continue using native tools; atr run is optional and needs explicit execution scope. "
                         "Respect task scope and host delegation restrictions; simple tasks may stay with the main agent.")
@@ -476,6 +530,9 @@ def main(argv=None):
         print(markdown(report(Path(args.project).resolve(strict=True), args.session, args.turn)))
         return 0
     try:
+        if settings(Path(args.project).resolve(strict=True))['mode'] == 'off':
+            print('{}')
+            return 0
         data = sys.stdin.buffer.read(MAX_INPUT + 1)
         if len(data) > MAX_INPUT:
             raise ValueError('hook input too large')
@@ -488,6 +545,14 @@ def main(argv=None):
             frames.append(f'{trace.tb_frame.f_code.co_name}:{trace.tb_lineno}')
             trace = trace.tb_next
         print('ATR observation unavailable: ' + type(exc).__name__ + ' [' + ' > '.join(frames[-3:]) + ']', file=sys.stderr)
+        try:
+            root = Path(args.project).resolve(strict=True)
+            if settings(root)['mode'] != 'off':
+                atomic(safe(root, '.atr/native/last-error.json'), json.dumps({
+                    'at': datetime.now(timezone.utc).isoformat(), 'type': type(exc).__name__,
+                    'location': frames[-3:]}).encode())
+        except Exception:
+            pass
         response = {}
     print(json.dumps(response, ensure_ascii=False))
     return 0

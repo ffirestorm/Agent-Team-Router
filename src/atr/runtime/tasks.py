@@ -16,6 +16,10 @@ CACHES = {".pytest_cache", "__pycache__"}
 
 def contract(path: Path) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
+    return validate_contract(data)
+
+
+def validate_contract(data: dict) -> dict:
     required = {"id", "description", "allowed_paths", "baseline", "verify"}
     if not isinstance(data, dict) or set(data) != required:
         raise ATRException(f"任务 JSON 必须且仅包含 {sorted(required)}")

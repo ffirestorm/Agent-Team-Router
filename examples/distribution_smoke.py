@@ -43,7 +43,7 @@ def smoke(wheel: Path, wheelhouse: Path | None = None):
         if skill.exists():
             raise RuntimeError("Skill rollback failed")
         runtime_preview = None
-        if version.startswith(("0.2.", "0.3.")):
+        if version.startswith(("0.2.", "0.3.", "0.4.")):
             (project / ".atr/config.toml").write_text('''version=1
 platform="codex"
 profile="development"
@@ -63,13 +63,20 @@ efforts=["medium"]
                 raise RuntimeError("Dry-run unexpectedly created an execution record")
             runtime_preview = True
         native_collector = None
-        if version.startswith("0.3."):
+        if version.startswith(("0.3.", "0.4.")):
             native = json.loads(run("-m", "atr", "--project", str(project), "native", "status"))
-            if native["installed"] or native["recording"] != "not_confirmed":
+            if native["installed"] or native["recording"] != ("off" if version.startswith("0.4.") else "not_confirmed"):
                 raise RuntimeError("Fresh wheel incorrectly claims native recording")
             standalone = project / "native_collector.py"
             run("-c", "from importlib.resources import files; from pathlib import Path; "
                 "Path(" + repr(str(standalone)) + ").write_bytes(files('atr.native').joinpath('collector.py').read_bytes())")
+            if version.startswith("0.4."):
+                disabled = subprocess.run([str(python), "-I", str(standalone), "--project", str(project)],
+                                          input=b'invalid input', cwd=base, env=env,
+                                          check=True, capture_output=True, timeout=15)
+                if disabled.stdout.strip() != b'{}' or disabled.stderr or (project / '.atr/native/events.sqlite3').exists():
+                    raise RuntimeError("Default-off collector wrote events or errors")
+                run("-c", "from pathlib import Path; from atr.native.collector import set_mode; set_mode(Path(" + repr(str(project)) + "), 'summary')")
             payload = {"cwd": str(project), "session_id": "distribution-fixture", "turn_id": "turn", "hook_event_name": "SessionStart"}
             result = subprocess.run([str(python), "-I", str(standalone), "--project", str(project)],
                                     input=json.dumps(payload).encode(), cwd=base, env=env,
@@ -80,6 +87,14 @@ efforts=["medium"]
                                       "--session", "distribution-fixture", "--format", "json"))
             if observed["event_count"] != 1 or observed["agents"]:
                 raise RuntimeError("Packaged collector fabricated a model invocation")
+            if version.startswith("0.4."):
+                run("-m", "atr", "--project", str(project), "native", "off")
+                cleanup = json.loads(run("-m", "atr", "--project", str(project), "native", "cleanup", "--keep-sessions", "0"))
+                if not cleanup["dry_run"] or not cleanup["protected_sessions"]:
+                    raise RuntimeError("Retention preview failed to protect recent fixture")
+                draft = json.loads(run("-m", "atr", "--project", str(project), "task", "draft", "Add a feature"))
+                if draft["ready"] or not draft["missing"]:
+                    raise RuntimeError("Task draft fabricated independent acceptance")
             native_collector = True
         return {"ok": True, "wheel": wheel.name, "version": version,
                 "isolated_import": True, "profiles": len(profiles),
