@@ -6,6 +6,14 @@ EXPLORER = Role("explorer", "fast", "low", "Explore source and cite file paths. 
 TRACER = Role("logic_tracer", "reasoning", "high", "Trace call chains and explain invariants with source evidence. Do not edit files.")
 REVIEWER = Role("reviewer", "reasoning", "high", "Review correctness, tests and risks with concrete evidence. Do not edit files.")
 WORKER = Role("worker", "balanced", "medium", "Implement the scoped change and run relevant tests. Report evidence.", False)
+SIMPLE_WORKER = Role("simple_worker", "fast", "low",
+                     "Handle a clear, simple implementation task. Return a concise summary of changes, files and any unresolved issues. "
+                     "Use only needed context. Do not spawn reviewers or add an acceptance, retry or model-upgrade pipeline. "
+                     "Run checks only when the task or repository requires them or they are needed for the change; report what actually ran.", False)
+NATIVE_WORKER = replace(WORKER, instructions=
+                       "Handle a normal implementation task. Return a concise summary of changes, files and any unresolved issues. "
+                       "Use only needed context. Do not spawn reviewers or add an acceptance, retry or model-upgrade pipeline. "
+                       "Run checks only when the task or repository requires them or they are needed for the change; report what actually ran.")
 ARCHITECT = Role("architect", "expert", "high", "Analyze architecture and tradeoffs. Propose a bounded design. Do not edit files.")
 
 PROFILES = {
@@ -13,7 +21,8 @@ PROFILES = {
     "balanced": Profile("balanced", "常规开发与独立审查", 2, (WORKER, REVIEWER)),
     "quality": Profile("quality", "复杂设计、实现与专家审查", 3, (ARCHITECT, replace(WORKER, tier="reasoning", effort="high"), replace(REVIEWER, tier="expert"))),
     "code-review": Profile("code-review", "只读源码理解、调用链追踪和复盘", 2, (EXPLORER, TRACER, REVIEWER)),
-    "development": Profile("development", "探索、实现、测试与审查", 3, (EXPLORER, WORKER, REVIEWER)),
+    "development": Profile("development", "轻量原生分工：简单实现、常规实现与可选探索；主模型由用户选择", 3,
+                           (EXPLORER, SIMPLE_WORKER, NATIVE_WORKER)),
 }
 
 

@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "codex": "codex-cli 0.167.0-alpha.3.2",
+  "loaded_roles": {
+    "atr_simple_worker": "gpt-6-luna",
+    "atr_worker": "gpt-6.1-terra",
+    "atr_explorer": "gpt-6-luna"
+  },
+  "user_selected_main_preserved": true,
+  "writable_workers": [
+    "atr_simple_worker",
+    "atr_worker"
+  ],
+  "reviewer_added": false,
+  "hooks_installed": false,
+  "recording_mode": "off",
+  "rpc_methods": [
+    "initialize",
+    "config/read"
+  ],
+  "inference_requested": false,
+  "account_access_verified": false,
+  "limitations": "Configuration discovery and previews only. No worker was spawned; generated instructions guide the host rather than enforce its decisions."
+}

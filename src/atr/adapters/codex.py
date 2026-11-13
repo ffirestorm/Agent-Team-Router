@@ -164,6 +164,9 @@ class CodexAdapter:
             changes[path] = tomlkit.dumps(layer).encode()
             lines.append(f"- `{key}`: `{item.model}` / `{item.effort}`; {'read-only' if item.read_only else 'workspace-write'}. {item.instructions}")
         changes[config_name] = tomlkit.dumps(doc).encode()
+        if plan.profile == "development":
+            from atr.delegation import workflow_instructions
+            lines += ["", "### Lightweight native delegation", "", workflow_instructions(plan)]
         changes["AGENTS.md"] = managed_block((current.get("AGENTS.md") or b"").decode(), "\n".join(lines)).encode()
         return changes
 

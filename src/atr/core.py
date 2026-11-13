@@ -111,11 +111,20 @@ def plan_team(task: str, profile: Profile, models: list[Model],
         complexity = complexity_override
     overrides = overrides or {}
     roles = list(profile.roles)
+    lightweight = profile.name == "development"
     notes = ["仅生成建议，不执行任务。模型目录验证不代表账号调用权限或额度验证。"]
-    if not static and complexity == "low":
+    if not static and lightweight:
+        if complexity == "high" or risk == "high":
+            roles = []
+            notes.append("复杂或高风险任务留给用户选择的主 Agent；不额外安排审查角色。")
+        else:
+            wanted = "simple_worker" if complexity == "low" else "worker"
+            roles = [r for r in roles if r.name == wanted]
+        notes.append("轻量原生分工建议；不强制测试、验收、审查或自动返修流程。")
+    elif not static and complexity == "low":
         roles = [r for r in roles if r.name in ("worker", "explorer")][:1] or roles[:1]
         notes.append("简单任务仅安排一个角色，减少子 Agent 调度成本。")
-    stronger_review = complexity == "high" or risk == "high"
+    stronger_review = not lightweight and (complexity == "high" or risk == "high")
     if stronger_review and not any(r.name == "reviewer" for r in roles):
         roles.append(Role("reviewer", "expert", "high", "Review correctness, risks and evidence. Do not edit files."))
     assignments = []

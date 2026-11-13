@@ -43,27 +43,23 @@ def manifest(root):
 
 def instructions(data, record):
     text = data.decode()
-    content = f'''### ATR native observation (V0.4)
-Native recording defaults OFF. Installation is not permission to enable recording.
-Check `.atr/native/settings.json`: only explicit mode summary/detailed enables it;
-`.atr/native/disabled` overrides it. When off, skip notes/reports and do not ask the
-user to enable recording for ordinary tasks. Say recording is off when relevant.
-When enabled, native hooks collect facts; instructions provide narration.
-Before useful, authorized delegation, announce the intended role, configured model
-(or unknown) and task. Respect higher-priority host restrictions on delegation.
-Use actual native tools. Do not announce a planned assignment as a completed call.
-SessionStart/UserPromptSubmit context supplies the session, turn and report path.
-After spawn returns an ID, internally record a SHORT NON-SECRET task label with:
-`{record['command']} --note --session SESSION --turn TURN --agent-id ID --role ROLE --task 'short label'`
-Omit --turn if unavailable; never guess IDs. Notes declare intent, not model proof.
-Before the final response, derive a fresh report internally (files may be snapshots):
-`{record['command']} --report --session SESSION --turn TURN`
-Summarize observed agent/model/task/status and separate test evidence in the final
-reply. Missing hooks/models/usage mean unknown. Stop/completed request is not task
-acceptance. The final request usage may arrive after the reply. No per-task user
-ATR commands are needed. Never bypass hook trust, force delegation, scrape private
-transcripts, or switch models through hooks. If no observation context is present,
-state recording is unconfirmed; do not invent a session or an execution record.
+    content = f'''### ATR native observation (V0.5)
+Recording defaults OFF. Only an explicit user recording request may enable it.
+Check .atr/native/settings.json; absent settings or .atr/native/disabled means off.
+Live delegation narration is independent of recording. When off, skip persisted
+notes/reports and never enable recording just to complete or diagnose a task.
+When recording is explicitly enabled and hook context provides session/turn IDs,
+after a real spawn optionally attach a short non-secret label with the helper
+`--note --session SESSION [--turn TURN] --agent-id ID --role ROLE --task LABEL`.
+Before the final reply, derive a fresh report with `--report --session SESSION
+[--turn TURN]`; never guess IDs or rely on stale snapshots.
+Helper: `{record['command']}`
+Labels declare intent; only observed request events supply host-reported models.
+Missing events/usage stay unknown; a stopped agent or completed request is not
+independent acceptance. Final request usage may arrive after the reply.
+Do not bypass hook trust or add reviewers, quality gates, test pipelines, retries
+or model escalation just for observation. Keep using native tools; normal tasks
+do not require atr run or any per-task user ATR command.
 '''
     if text.count(END) != 1:
         raise ATRException('Missing ATR managed instructions block')

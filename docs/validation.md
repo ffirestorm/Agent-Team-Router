@@ -1,4 +1,4 @@
-> 本文保留 V0.1 发布时的历史验证。V0.2 见 [运行说明](v0.2-runtime.md)，V0.4 见 [管理与真实自测](v0.4-management.md)，V0.3 见 [集成与验证范围](v0.3-native.md)。
+> V0.5 见 [轻量原生分工](v0.5-delegation.md)。本文保留 V0.1 发布时的历史验证。V0.2 见 [运行说明](v0.2-runtime.md)，V0.4 见 [管理与真实自测](v0.4-management.md)，V0.3 见 [集成与验证范围](v0.3-native.md)。
 
 # V0.1 验证记录
 

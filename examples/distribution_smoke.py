@@ -43,7 +43,7 @@ def smoke(wheel: Path, wheelhouse: Path | None = None):
         if skill.exists():
             raise RuntimeError("Skill rollback failed")
         runtime_preview = None
-        if version.startswith(("0.2.", "0.3.", "0.4.")):
+        if version.startswith(("0.2.", "0.3.", "0.4.", "0.5.")):
             (project / ".atr/config.toml").write_text('''version=1
 platform="codex"
 profile="development"
@@ -63,14 +63,14 @@ efforts=["medium"]
                 raise RuntimeError("Dry-run unexpectedly created an execution record")
             runtime_preview = True
         native_collector = None
-        if version.startswith(("0.3.", "0.4.")):
+        if version.startswith(("0.3.", "0.4.", "0.5.")):
             native = json.loads(run("-m", "atr", "--project", str(project), "native", "status"))
-            if native["installed"] or native["recording"] != ("off" if version.startswith("0.4.") else "not_confirmed"):
+            if native["installed"] or native["recording"] != ("off" if version.startswith(("0.4.", "0.5.")) else "not_confirmed"):
                 raise RuntimeError("Fresh wheel incorrectly claims native recording")
             standalone = project / "native_collector.py"
             run("-c", "from importlib.resources import files; from pathlib import Path; "
                 "Path(" + repr(str(standalone)) + ").write_bytes(files('atr.native').joinpath('collector.py').read_bytes())")
-            if version.startswith("0.4."):
+            if version.startswith(("0.4.", "0.5.")):
                 disabled = subprocess.run([str(python), "-I", str(standalone), "--project", str(project)],
                                           input=b'invalid input', cwd=base, env=env,
                                           check=True, capture_output=True, timeout=15)
@@ -87,7 +87,7 @@ efforts=["medium"]
                                       "--session", "distribution-fixture", "--format", "json"))
             if observed["event_count"] != 1 or observed["agents"]:
                 raise RuntimeError("Packaged collector fabricated a model invocation")
-            if version.startswith("0.4."):
+            if version.startswith(("0.4.", "0.5.")):
                 run("-m", "atr", "--project", str(project), "native", "off")
                 cleanup = json.loads(run("-m", "atr", "--project", str(project), "native", "cleanup", "--keep-sessions", "0"))
                 if not cleanup["dry_run"] or not cleanup["protected_sessions"]:
@@ -95,6 +95,10 @@ efforts=["medium"]
                 draft = json.loads(run("-m", "atr", "--project", str(project), "task", "draft", "Add a feature"))
                 if draft["ready"] or not draft["missing"]:
                     raise RuntimeError("Task draft fabricated independent acceptance")
+            if version.startswith("0.5."):
+                delegation = json.loads(run("-m", "atr", "--project", str(project), "delegate", "fix typo"))
+                if delegation["action"] != "main" or delegation["model"] is not None:
+                    raise RuntimeError("Delegation preview fabricated an unapplied native worker")
             native_collector = True
         return {"ok": True, "wheel": wheel.name, "version": version,
                 "isolated_import": True, "profiles": len(profiles),

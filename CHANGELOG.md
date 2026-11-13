@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 — 2026-11-13
+
+- development 增加可写的 Luna 简单开发角色，保留 Terra 常规开发和可选只读探索，移除该 Profile 默认 Reviewer；保留用户主模型和其他自定义角色。
+- 普通 apply 写入明确的轻量原生分工指令：分配前计划、实际启动 ID、真实进展及返回结果，过程说明与记录开关独立。
+- 不默认追加 Reviewer、独立验收、自动测试/返修/升级链；原生记录继续默认关闭，其他 Profile 和明确请求的受控执行器保留。
+- 增加可选 `atr delegate` 只读预览和 plan.native_delegation，核对已应用角色的模型、强度和可写配置；不匹配时留给主 Agent。
+- 原生配置发现探针确认两种可写角色、不新增 Reviewer、保留主模型且无 hooks；不把配置加载等同于真实模型调用或节省额度证明。
+- 详见 [V0.5](docs/v0.5-delegation.md)。未创建本版本 Release 或上传 PyPI。
+
 ## 0.4.0 — 2026-11-13
 
 - 原生记录默认关闭；显式 on/off，summary/detailed 两级，旧 disabled 标记兼容；关闭时不写事件、报告或诊断，安装不启用记录。

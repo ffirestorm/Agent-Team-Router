@@ -36,6 +36,11 @@ def parser():
     plan = command("plan", help="explain task allocation without executing it")
     plan.add_argument("task")
     plan.add_argument("--complexity", choices=["simple", "medium", "complex"])
+    delegation = command("delegate", help="preview lightweight native worker selection; no model invocation")
+    delegation.add_argument("task")
+    delegation.add_argument("--complexity", choices=["simple", "medium", "complex"])
+    delegation.add_argument("--risk", choices=["low", "normal", "high"])
+    delegation.add_argument("--tiny", action="store_true", help="keep work with the user-selected main agent")
     app = command("apply", help="validate, diff and safely apply native configuration")
     app.add_argument("--dry-run", action="store_true")
     command("doctor")
@@ -132,7 +137,12 @@ def run(args):
         override = {"simple": "low", "medium": "normal", "complex": "high"}.get(args.complexity)
         result = plan_team(args.task, profile, models, rules, complexity_override=override).to_dict()
         result["initial_execution"] = select_initial(args.task, models, doc.get("routing", {}), args.complexity)
+        from atr.native.delegation import preview
+        result["native_delegation"] = preview(root, args.task, args.complexity)
         emit(result)
+    elif args.command == "delegate":
+        from atr.native.delegation import preview
+        emit(preview(root, args.task, args.complexity, args.risk, args.tiny))
     elif args.command == "apply":
         changes, before = prepare(root)
         preview = diff(root, changes)

@@ -15,7 +15,7 @@ import shlex
 import sys
 import tempfile
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 EVENTS = ("SessionStart", "UserPromptSubmit", "SubagentStart", "SubagentStop",
           "PreToolUse", "PostToolUse", "PreModelRequest", "PostModelRequest",
           "Stop", "Interrupt", "SessionEnd")

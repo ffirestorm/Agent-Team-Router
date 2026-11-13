@@ -1,6 +1,6 @@
 # Agent Team Router (ATR)
 
-面向 AI Coding Agent 的轻量配置与模型分工工具。**当前源码版本为 `0.4.0`：静态团队、三档初始策略、受控单任务执行，以及 Codex 原生会话记录。** Python 3.11+；原生 Codex 本机实测版本为 0.167.0-alpha.3.2。跨平台模拟测试和打包验证见 [GitHub Actions](https://github.com/ffirestorm/Agent-Team-Router/actions/workflows/ci.yml)，不代表其他系统的真实 Codex 执行已经实测。
+面向 AI Coding Agent 的轻量配置与模型分工工具。**当前源码版本为 `0.5.0`：静态团队、三档初始策略、受控单任务执行，以及 Codex 原生会话记录。** Python 3.11+；原生 Codex 本机实测版本为 0.167.0-alpha.3.2。跨平台模拟测试和打包验证见 [GitHub Actions](https://github.com/ffirestorm/Agent-Team-Router/actions/workflows/ci.yml)，不代表其他系统的真实 Codex 执行已经实测。
 
 ## 安装与快速上手
 
@@ -37,6 +37,21 @@ atr skill install --project demo-project
 - simple/medium/complex 三档策略、手动难度覆写、隔离单任务执行、固定验收、失败分类、一次受限升级、取消、运行记录和用量汇总。
 - V0.3：一次安装原生 hooks，过程分工说明、Agent/实际请求模型记录、会话/轮次报告与收尾汇总。
 
+## V0.5：轻量原生分工
+
+主 Agent 继续由你在 Codex 中选择。`development` 配置提供可写的 `atr_simple_worker`（默认 Luna）和 `atr_worker`（默认 Terra），加上可选只读探索角色。规模很小、含糊、复杂或高风险工作留给主 Agent；适合独立完成的简单/常规工作按角色下放。
+
+```bash
+atr profile use development    # 已初始化项目；新项目用 atr init --profile development
+atr apply --dry-run
+atr apply
+atr delegate "实现缓存接口"     # 可选预览，不启动模型
+```
+
+信任项目并开启新会话后，主 Agent 按项目指令说明计划角色/配置模型/任务、实际启动 ID、可用进展和返回结果。过程说明不依赖 hooks，关闭落盘记录也能说明分工。不默认增加 Reviewer、独立验收、自动测试、返修或升级链；任务本身需要的普通检查仍可执行。原生记录继续默认关闭。
+
+这些是主 Agent 遵循的原生分工指令，不是强制调度器或自定义实时面板，不保证零错误或节省额度。详细使用、迁移和边界见 [V0.5](docs/v0.5-delegation.md)。
+
 ## V0.4：记录默认关闭，按需管理
 
 原生记录默认 **off**，首次安装和没有显式设置的升级均不采集。当前项目也保持关闭。需要记录时才明确使用 `atr native on`（summary）或 `--level detailed`；`atr native off` 随时停止。安装/更新、任务草稿和其他功能不会自动开启记录。
@@ -67,7 +82,7 @@ atr native install
 
 不提供复杂多 Agent 通信、并发调度、宿主模型调用拦截或自适应学习。V0.2 不自动合入候选修改，不在中断后自动重放模型调用，也不把未知费用或 Plus 额度换算为金额。不支持其他平台的原生配置或执行；不支持的平台明确报错。
 
-**原生角色配置 ≠ 自动运行时路由。** `atr plan` 的任务建议不会自动改变已经生成的静态团队。`atr apply` 依据当前 Profile 生成可供宿主选择的角色，实际是否创建 Agent、使用哪个角色及是否并行由 Codex 决定。Profile 并发数是子 Agent 并发上限，不包括主 Agent。
+**原生分工由主 Agent 按指令执行，不是外部强制调度。** `atr plan` 的任务建议不会自动改变已经生成的静态团队。`atr apply` 依据当前 Profile 生成角色，并为 development 写入轻量分工规则，实际是否创建 Agent、使用哪个角色及是否并行由 Codex 决定。Profile 并发数是子 Agent 并发上限，不包括主 Agent。
 
 Plus 额度优化是设计目标；模型档位和成本倾向是启发式规则，尚无真实评测，不能宣称节省比例或保证模型相对价格。
 
@@ -79,7 +94,7 @@ Plus 额度优化是设计目标；模型档位和成本倾向是启发式规则
 | balanced | Worker、Reviewer | 2 | 日常开发 |
 | quality | Architect、Worker、Reviewer | 3 | 架构和复杂问题 |
 | code-review | Explorer、Logic Tracer、Reviewer | 2 | 只读理解、调用链、复盘 |
-| development | Explorer、Worker、Reviewer | 3 | 探索、开发和验证 |
+| development | Explorer、Simple Worker、Worker | 3 | 简单/常规实现轻量分工；不默认增加审查 |
 
 ```bash
 atr profile use economical --project demo-project

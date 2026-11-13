@@ -1,10 +1,10 @@
 ---
 name: agent-team-router
-description: Configure project-local Codex teams, explain task difficulty and model allocation, diagnose or roll back configuration, install native conversation observation, and run explicitly requested bounded engineering tasks with ATR.
+description: Configure project-local Codex teams, explain task difficulty and model allocation, diagnose or roll back configuration, guide lightweight Luna/Terra delegation, install optional native observation, and run explicitly requested bounded tasks with ATR.
 ---
 
 Use the real `atr` CLI. Check `atr --version`: V0.1 only generates configuration;
-V0.2 adds bounded single-task execution; V0.3 adds passive native hooks; V0.4 defaults recording OFF and adds retention, health, queries and task drafts.
+V0.2 adds bounded single-task execution; V0.3 adds passive native hooks; V0.4 defaults recording OFF; V0.5 adds lightweight native delegation with narration independent of recording.
 Native observation requires one-time installation and Codex hook review. ATR does not
 intercept or switch arbitrary host calls. Model tiers are heuristics; do not promise quota savings.
 
@@ -24,14 +24,33 @@ only if that package has actually been published; for a source checkout use
   are within the user's requested scope. Report actual CLI output and failures.
 - Install this skill locally with `atr skill install`. Use `atr rollback` to undo
   the latest application or skill installation. `atr recover` handles interrupted writes.
-- For explicitly requested engineering execution in V0.2, prepare a task JSON with
+- For specifically requested isolated/bounded ATR execution (legacy runtime), prepare a task JSON with
   description, allowed paths, baseline argv and independent JSON verifier argv.
   Inspect `atr run TASK.json --dry-run`. Only `--execute` invokes models. Add
   `--allow-escalation` only when automatic upgrades are in the requested scope.
-  A request for configuration or model advice alone is not an execution request.
+  An ordinary native development task is not a request for this extra pipeline.
+  Use the lightweight native flow below unless the user specifically requests isolated execution.
 - Inspect `atr runs show ID` and `atr runs report`. Candidate changes stay in an
   isolated snapshot with a patch; review them before integrating. `runs cancel ID`
   requests cancellation; `runs recover ID` never automatically reexecutes a model.
+
+For normal native development, use the development Profile and `atr apply` when
+setup/update is authorized; it installs two writable roles: atr_simple_worker at
+the fast mapping (default Luna/low) and atr_worker at balanced (default Terra/medium),
+plus an optional read-only explorer. Main model remains the user's Codex choice.
+Applicable AGENTS.md explicitly requests useful delegation: clear simple chunks to
+simple_worker, normal implementation to worker; tiny/ambiguous/complex/risky work
+stays main. Announce planned configured model/role/task, then confirm the actual
+native spawn ID, relay actual progress and report the returned result. Do not claim
+backend model proof, unrun tests, guaranteed correctness or subscription savings.
+Use only necessary context and concise results; avoid duplicate work and concurrent
+writes to the same files. Do not add a Reviewer, independent acceptance, automatic
+test/repair/upgrade pipeline unless requested. Ordinary required checks still apply.
+`atr delegate TASK` is an optional deterministic preview, not an execution tool;
+`atr plan` separates native_delegation from the isolated executor's initial policy.
+Narration works with recording OFF and without installed hooks. Do not ask the user
+to enable recording. Native tools/updated role definitions require host support,
+project trust and a new session after configuration changes.
 
 For native conversation observation, install once with `atr native install`
 (after `init`), previewable with `--dry-run`. It installs team configuration, this
