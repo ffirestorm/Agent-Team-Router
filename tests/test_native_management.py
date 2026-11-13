@@ -274,3 +274,33 @@ def test_downgrade_to_summary_is_rechecked_before_storing_tool_data(project, mon
     add(project, 'PreToolUse', tool_name='spawn_agent', tool_input={'message': 'private'})
     monkeypatch.setattr(c, 'connect', original)
     assert c.report(project, 's')['event_count'] == 0
+
+
+def test_transient_database_sidecar_does_not_require_leaf_realpath(project, monkeypatch):
+    folder = project / '.atr/native'
+    folder.mkdir(parents=True)
+    journal = folder / 'events.sqlite3-journal'
+    original = Path.resolve
+    def resolve(path, *args, **kwargs):
+        if path == journal:
+            raise OSError('transient Win32 file sharing')
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'resolve', resolve)
+    assert c.safe(project, '.atr/native/events.sqlite3-journal') == journal
+
+
+def test_native_directory_junction_cannot_escape(project, tmp_path_factory):
+    import os
+    if os.name != 'nt':
+        pytest.skip('Windows directory junction behavior')
+    outside = tmp_path_factory.mktemp('native-junction-outside')
+    (project / '.atr').mkdir()
+    junction = project / '.atr/native'
+    result = subprocess.run(['cmd', '/c', 'mklink', '/J', str(junction), str(outside)], capture_output=True)
+    assert result.returncode == 0
+    try:
+        with pytest.raises(ValueError):
+            c.safe(project, '.atr/native/events.sqlite3')
+        assert not list(outside.iterdir())
+    finally:
+        junction.rmdir()

@@ -46,12 +46,17 @@ def safe(root, relative):
     if rel.anchor or win.anchor or '..' in rel.parts or '..' in win.parts:
         raise ValueError('unsafe native observation path')
     target = root
+    boundary = comparison_path(root.resolve(strict=True))
     for part in rel.parts:
         target = target / part
         if target.is_symlink():
             raise ValueError('native observation path is a symlink')
-    if not comparison_path(target.resolve()).is_relative_to(comparison_path(root.resolve())):
-        raise ValueError('native observation path escapes project')
+        # Resolve existing directories strictly, including Windows junctions.
+        # Resolving a transient SQLite journal leaf with strict=False races its
+        # deletion/Win32 sharing and can return an inconsistent fallback spelling.
+        # With no '..' or symlinks, a file/missing suffix stays in the checked dir.
+        if target.is_dir() and not comparison_path(target.resolve(strict=True)).is_relative_to(boundary):
+            raise ValueError('native observation path escapes project')
     return target
 
 
